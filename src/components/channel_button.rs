@@ -25,6 +25,7 @@ impl Component for ChannelButton {
             .key(channel.read().id().to_string())
             .horizontal()
             .padding((0., 8., 0., 8.))
+            .margin((0., 8., 0., 8.))
             .spacing(8.)
             .height(Size::px(42.))
             .cross_align(Alignment::Center)

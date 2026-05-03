@@ -8,7 +8,7 @@ use crate::{
     AppChannel,
     components::{
         StoatButton, StoatButtonColorsThemePartialExt, StoatButtonLayoutThemePartialExt,
-        avatar::avatar,
+        Avatar,
     },
     http,
 };
@@ -33,7 +33,7 @@ impl Component for CurrentUserButton {
                 Button::new()
                     .flat()
                     .padding(0.)
-                    .child(avatar(&*current_user.read(), None))
+                    .child(Avatar::new(current_user.clone().into_readable(), None, 42.).presence(true))
                     .corner_radius(42.)
                     .on_press(move |_| show_popup.toggle()),
             )
@@ -85,9 +85,7 @@ impl Component for CurrentUserButton {
                                                 .horizontal()
                                                 .spacing(8.)
                                                 .child(
-                                                    avatar(&*user, None)
-                                                        .width(Size::px(32.))
-                                                        .height(Size::px(32.)),
+                                                    Avatar::new(current_user.clone().into_readable(), None, 32.)
                                                 )
                                                 .child(
                                                     rect()

@@ -1,6 +1,7 @@
 use std::{cell::Ref, rc::Rc};
 
 use freya::{prelude::*, radio::Readable};
+use stoat_models::v0;
 
 pub fn map_readable<T, U>(readable: Readable<T>, f: impl Fn(&T) -> &U + 'static) -> Readable<U> {
     let f = Rc::new(f);
@@ -100,6 +101,61 @@ pub fn map_optional_readable<T, U>(
             }
         }),
     )
+}
+
+pub fn parse_hex(hex: &str) -> Option<Color> {
+    let hex = hex.strip_prefix('#')?;
+
+    let (r, g, b, a) = match hex.len() {
+        3 => (
+            u8::from_str_radix(&hex[0..1], 16).ok()?,
+            u8::from_str_radix(&hex[1..2], 16).ok()?,
+            u8::from_str_radix(&hex[2..3], 16).ok()?,
+            0xFF,
+        ),
+        4 => (
+            u8::from_str_radix(&hex[0..1], 16).ok()?,
+            u8::from_str_radix(&hex[1..2], 16).ok()?,
+            u8::from_str_radix(&hex[2..3], 16).ok()?,
+            u8::from_str_radix(&hex[3..4], 16).ok()?,
+        ),
+        6 => (
+            u8::from_str_radix(&hex[0..2], 16).ok()?,
+            u8::from_str_radix(&hex[2..4], 16).ok()?,
+            u8::from_str_radix(&hex[4..6], 16).ok()?,
+            0xFF,
+        ),
+        8 => (
+            u8::from_str_radix(&hex[0..2], 16).ok()?,
+            u8::from_str_radix(&hex[2..4], 16).ok()?,
+            u8::from_str_radix(&hex[4..6], 16).ok()?,
+            u8::from_str_radix(&hex[6..8], 16).ok()?,
+        ),
+        _ => return None,
+    };
+
+    Some(Color::from_argb(a, r, g, b))
+}
+
+pub fn member_display_color(member: &v0::Member, server: &v0::Server) -> Option<Fill> {
+    let mut roles = member
+        .roles
+        .iter()
+        .filter_map(|id| server.roles.get(id))
+        .collect::<Vec<_>>();
+
+    roles.sort_by(|a, b| a.rank.cmp(&b.rank));
+
+    let color = roles
+        .into_iter()
+        .filter_map(|role| role.colour.as_ref())
+        .next()?;
+
+    if let Some(color) = parse_hex(color) {
+        return Some(Fill::Color(color))
+    };
+
+    None
 }
 
 // pub fn map_optional_readable<T, U>(

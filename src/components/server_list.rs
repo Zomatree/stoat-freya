@@ -6,19 +6,73 @@ use freya::{
 
 use crate::{
     AppChannel, Config, Selection, SettingsPage,
-    components::{CurrentUserButton, HomeButton, StoatButton, server_icon},
-};
+    components::{CurrentUserButton, HomeButton, StoatButton, server_icon},};
 
 #[derive(PartialEq)]
 pub struct ServerList {}
 
 impl Component for ServerList {
     fn render(&self) -> impl IntoElement {
-        let mut radio = use_radio(AppChannel::Servers);
         let config = use_consume::<State<Config>>();
+        let mut radio = use_radio(AppChannel::Servers);
+        let mut hovered = use_state(|| false);
 
         let selection = radio.slice(AppChannel::Selection, |state| &state.selection);
-        let mut hovered = use_state(|| false);
+        let order_settings = radio.slice(AppChannel::Settings("ordering"), |state| {
+            &state.settings.ordering
+        });
+        let servers = radio.slice(AppChannel::Servers, |state| &state.servers);
+        let members = radio.slice(AppChannel::Members, |state| &state.members);
+        let user_id = radio.slice(AppChannel::UserId, |state| state.user_id.as_ref().unwrap());
+
+        let ordered_servers = use_memo({
+            move || {
+                let mut order = Vec::new();
+
+                let servers = servers.read();
+                let order_settings = order_settings.read().as_ref().and_then(|o| o.servers.as_ref()).cloned();
+
+                if let Some(ordering) = order_settings {
+                    for id in ordering.clone() {
+                        if servers.contains_key(&id) {
+                            order.push(id);
+                        };
+                    }
+
+                    for id in servers.keys() {
+                        if !ordering.contains(id) {
+                            order.push(id.clone());
+                        }
+                    }
+                } else {
+                    let mut join_dates = servers
+                        .keys()
+                        .cloned()
+                        .map(|id| {
+                            let joined_at = members
+                                .read()
+                                .get(&id)
+                                .unwrap()
+                                .get(&*user_id.read())
+                                .unwrap()
+                                .joined_at
+                                .clone();
+
+                            (id, joined_at)
+                        })
+                        .collect::<Vec<_>>();
+
+                    join_dates.sort_by(|(_, a), (_, b)| a.cmp(b));
+
+                    order.extend(join_dates.into_iter().map(|(id, _)| id));
+                }
+
+                order
+                    .iter()
+                    .map(|id| servers.get(id).unwrap().clone())
+                    .collect::<Vec<_>>()
+            }
+        });
 
         rect()
             .child(
@@ -37,7 +91,7 @@ impl Component for ServerList {
                                     .width(Size::px(32.))
                                     .background(0xff45464f),
                             )
-                            .children(radio.read().servers.values().cloned().map(|server| {
+                            .children(ordered_servers.read().iter().cloned().map(|server| {
                                 rect()
                                     .key(server.id.clone())
                                     .maybe_child(
@@ -149,7 +203,7 @@ impl Component for ServerList {
                                     ),
                             )
                             .on_press(move |_| {
-                                radio.write_channel(AppChannel::Settings).settings =
+                                radio.write_channel(AppChannel::SettingsPage).settings_page =
                                     Some(SettingsPage::default());
                             }),
                     ),

@@ -1,4 +1,3 @@
-use freya::prelude::*;
 use futures::{FutureExt, SinkExt, StreamExt, future::select};
 use std::{sync::Arc, time::Duration};
 use stoat_database::events::{
@@ -9,13 +8,26 @@ use tokio::{
     sync::{
         Mutex,
         mpsc::{UnboundedReceiver, UnboundedSender},
-    },
-    time::sleep,
+    }, task::AbortHandle, time::sleep
 };
 use tokio_tungstenite::connect_async_with_config;
 use tungstenite::{Message, protocol::WebSocketConfig};
 
 use crate::{error::Error, http};
+
+#[derive(Debug, Clone)]
+pub enum LocalEvent {
+    Disconnected,
+    Reconnecting,
+    Reconnected,
+    Connected,
+}
+
+#[derive(Debug, Clone)]
+pub enum Event {
+    Stoat(EventV1),
+    Local(LocalEvent)
+}
 
 async fn send(
     ws: &Arc<Mutex<impl SinkExt<Message, Error = tungstenite::Error> + Unpin>>,
@@ -29,13 +41,13 @@ async fn send(
 }
 
 pub async fn run(
-    events: UnboundedSender<EventV1>,
+    events: UnboundedSender<Event>,
     client_events: Arc<Mutex<UnboundedReceiver<ClientMessage>>>,
 ) -> Result<(), Error> {
     let http = http();
 
     let uri = format!(
-        "{}/?token={}&format=json",
+        "{}/?token={}&format=json&ready=users&ready=servers&ready=channels&ready=members&ready=channel_unreads",
         &http.api_config.ws,
         http.token.read().unwrap().clone().expect("No token")
     );
@@ -65,7 +77,7 @@ pub async fn run(
         let ws_send = ws_send.clone();
 
         async move {
-            let mut task: Option<TaskHandle> = None;
+            let mut task: Option<AbortHandle> = None;
 
             while let Some(msg) = ws_receive.next().await {
                 let msg = msg?;
@@ -74,6 +86,9 @@ pub async fn run(
                     Message::Text(data) => {
                         serde_json::from_str(data.as_str()).map_err(|e| e.to_string())
                     }
+                    Message::Close(_) => {
+                        return Err(Error::ClosedWs)
+                    },
                     msg => {
                         if let Ok(text) = msg.to_text() {
                             log::error!("Unexpected WS message: {text:?}");
@@ -89,12 +104,15 @@ pub async fn run(
                         log::debug!("Received event {event:?}");
 
                         if let EventV1::Authenticated = &event {
-                            task = Some(spawn_forever({
+                            task = Some(tokio::spawn({
                                 let ws = ws_send.clone();
                                 let mut i = 0;
 
                                 async move {
                                     loop {
+                                        // sleep(Duration::from_secs(5)).await;
+                                        // ws.lock().await.close().await;
+
                                         send(
                                             &ws,
                                             &ClientMessage::Ping {
@@ -109,10 +127,10 @@ pub async fn run(
                                         sleep(Duration::from_secs(30)).await;
                                     }
                                 }
-                            }));
+                            }).abort_handle());
                         };
 
-                        events.send(event).map_err(|_| Error::InternalError)?;
+                        events.send(Event::Stoat(event)).map_err(|_| Error::InternalError)?;
                     }
                     Err(e) => {
                         log::error!("Failed to deserialise event: {e:?}");
@@ -121,10 +139,10 @@ pub async fn run(
             }
 
             if let Some(task) = task {
-                task.cancel();
+                task.abort();
             };
 
-            Ok::<_, Error>(())
+            Err(Error::ClosedWs)
         }
     }
     .boxed();
@@ -137,7 +155,7 @@ pub async fn run(
                 send(&ws_send, &message).await?
             }
 
-            Ok::<_, Error>(())
+            Err(Error::ClosedWsLocal)
         }
     }
     .boxed();

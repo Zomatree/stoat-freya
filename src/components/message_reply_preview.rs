@@ -1,7 +1,7 @@
 use freya::{icons::lucide::file_text, prelude::*};
 use stoat_models::v0;
 
-use crate::components::{ReplyController, ReplyIntent, avatar::avatar};
+use crate::components::{ReplyController, ReplyIntent, Avatar};
 
 #[derive(PartialEq)]
 pub struct MessageReplyPreview {
@@ -38,13 +38,7 @@ impl Component for MessageReplyPreview {
                     .spacing(4.)
                     .cross_align(Alignment::Center)
                     .child(
-                        message
-                            .member
-                            .as_ref()
-                            .map(|r| avatar(&message.user.read(), Some(&r.read())))
-                            .unwrap_or_else(|| avatar(&message.user.read(), None))
-                            .width(Size::px(14.))
-                            .height(Size::px(14.)),
+                        Avatar::new(message.user.clone(), message.member.clone(), 14.)
                     )
                     .child(message.user.read().username.clone())
                     .maybe_child(

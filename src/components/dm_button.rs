@@ -5,7 +5,7 @@ use stoat_models::v0;
 
 use crate::{
     AppChannel,
-    components::{HomeSelection, avatar::avatar, image},
+    components::{HomeSelection, Avatar, image},
 };
 
 #[derive(PartialEq)]
@@ -92,9 +92,7 @@ impl Component for DMDirectMessageButton {
             .cross_align(Alignment::Center)
             .spacing(8.)
             .child(
-                avatar(&user.read(), None)
-                    .width(Size::px(32.))
-                    .height(Size::px(32.)),
+                Avatar::new(self.user.clone(), None, 32.).presence(true)
             )
             .child(
                 rect()

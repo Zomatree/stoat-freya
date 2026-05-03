@@ -24,7 +24,7 @@ impl Component for MessageContent {
                     .content
                     .clone()
                     .filter(|c| !c.is_empty())
-                    .map(|content| label().text(content).line_height(1.5)),
+                    .map(|content| MarkdownViewer::new(content).paragraph_size(14.)),
             )
             .maybe_child(
                 (!self.message.message.read().reactions.is_empty()).then(|| MessageReactions {

@@ -1,7 +1,7 @@
 use freya::prelude::*;
 use stoat_models::v0;
 
-use crate::components::avatar;
+use crate::components::Avatar;
 
 #[derive(PartialEq)]
 pub struct FriendButton {
@@ -11,8 +11,6 @@ pub struct FriendButton {
 impl Component for FriendButton {
     fn render(&self) -> impl IntoElement {
         let mut hovering = use_state(|| false);
-
-        let user = self.user.read();
 
         rect()
             .horizontal()
@@ -26,10 +24,8 @@ impl Component for FriendButton {
             })
             .on_pointer_out(move |_| hovering.set_if_modified(false))
             .child(
-                avatar(&user, None)
-                    .width(Size::px(36.))
-                    .height(Size::px(36.)),
+                Avatar::new(self.user.clone(), None, 36.).presence(true)
             )
-            .child(user.username.clone())
+            .child(self.user.read().username.clone())
     }
 }

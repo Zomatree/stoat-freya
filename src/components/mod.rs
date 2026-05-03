@@ -37,6 +37,7 @@ mod textbox;
 mod trailing_message;
 mod welcome;
 mod member_list;
+mod user_profile;
 
 pub use app::*;
 pub use avatar::*;
@@ -77,3 +78,4 @@ pub use textbox::*;
 pub use trailing_message::*;
 pub use welcome::*;
 pub use member_list::*;
+pub use user_profile::*;

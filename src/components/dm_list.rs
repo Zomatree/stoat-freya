@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use freya::{
     icons::lucide::{house, notebook_text, users_round},
     prelude::*,
@@ -138,8 +140,7 @@ impl Component for DMList {
                             dmlist_nav_button(
                                 notebook_text(),
                                 "Saved Notes",
-                                saved_messages.read().as_ref().map(|c| c.id())
-                                    == self.selection.read().channel_id(),
+                                saved_messages.read().as_ref().is_some_and(|c| self.selection.read().channel_id().is_some_and(|s| s == c.id()))
                             )
                             .on_press({
                                 let mut radio = radio.clone();
@@ -168,6 +169,11 @@ impl Component for DMList {
                                                 .write_channel(AppChannel::ChannelMessages)
                                                 .channel_messages
                                                 .insert(id.clone(), Vec::new());
+
+                                            radio
+                                                .write_channel(AppChannel::Messages)
+                                                .messages
+                                                .insert(id.clone(), HashMap::new());
 
                                             id
                                         };

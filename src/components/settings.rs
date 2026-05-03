@@ -11,10 +11,10 @@ pub struct Settings {}
 impl Component for Settings {
     fn render(&self) -> impl IntoElement {
         let mut config = use_consume::<State<Config>>();
-        let radio = use_radio(AppChannel::Settings);
+        let radio = use_radio(AppChannel::SettingsPage);
 
         let close_settings =
-            move || radio.clone().write_channel(AppChannel::Settings).settings = None;
+            move || radio.clone().write_channel(AppChannel::SettingsPage).settings_page = None;
 
         let mut window_size = use_state(Area::default);
 

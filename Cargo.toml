@@ -11,7 +11,7 @@ hotreload = ["freya/hotreload"]
 # freya-components = { path = "../freya/crates/freya-components" }
 
 [dependencies]
-freya = { version = "0.4.0-rc.19", features = ["devtools", "radio", "remote-asset", "icons", "webview"] }
+freya = { version = "0.4.0-rc.19", features = ["devtools", "radio", "remote-asset", "icons", "webview", "markdown"] }
 freya-components = { version = "0.4.0-rc.19", features = ["remote-asset", "gif"] }
 tokio-tungstenite = { version = "0.27", features = ["native-tls"] }
 tungstenite = { version = "0.27", features = ["native-tls"] }

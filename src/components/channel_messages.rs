@@ -1,6 +1,7 @@
 use std::{collections::HashMap, fmt::Debug};
 
 use freya::{prelude::*, radio::use_radio};
+use jiff::{Timestamp, tz::TimeZone};
 use stoat_models::v0;
 
 use crate::{
@@ -288,10 +289,54 @@ impl Component for ChannelMessages {
                 let mut groups: Vec<Vec<MessageModel>> = Vec::new();
 
                 for model in messages.read().iter().cloned() {
-                    if let Some(group) = groups.last_mut()
-                        && group.first().unwrap().user.peek().id == model.user.peek().id
-                        && model.replies.is_empty()
-                    {
+                    if let Some(group) = groups.last_mut() {
+                        let last = group.last().unwrap();
+
+                        if last.user.peek().id != model.user.peek().id || !model.replies.is_empty()
+                        {
+                            groups.push(vec![model]);
+                            continue;
+                        };
+
+                        let last_datetime = Timestamp::try_from(
+                            ulid::Ulid::from_string(&last.message.peek().id)
+                                .unwrap()
+                                .datetime(),
+                        )
+                        .unwrap()
+                        .to_zoned(TimeZone::system());
+
+                        let current_datetime = Timestamp::try_from(
+                            ulid::Ulid::from_string(&model.message.peek().id)
+                                .unwrap()
+                                .datetime(),
+                        )
+                        .unwrap()
+                        .to_zoned(TimeZone::system());
+
+                        let diff = (current_datetime.timestamp().as_second() - last_datetime.timestamp().as_second()).abs();
+
+                        if last_datetime.date() != current_datetime.date()
+                            || diff >= 420
+                        {
+                            groups.push(vec![model]);
+                            continue;
+                        }
+
+                        let last_msg = last.message.read();
+
+                        if last_msg.system.is_some() {
+                            groups.push(vec![model]);
+                            continue;
+                        }
+
+                        let current_msg = model.message.read();
+
+                        if current_msg.system.is_some() || current_msg.masquerade != last_msg.masquerade {
+                            groups.push(vec![model]);
+                            continue;
+                        }
+
                         group.push(model);
                     } else {
                         groups.push(vec![model]);
@@ -322,7 +367,7 @@ impl Component for ChannelMessages {
                             .fetch_messages(
                                 &channel,
                                 &v0::OptionsQueryMessages {
-                                    limit: Some(20),
+                                    limit: Some(10),
                                     before: None,
                                     after: None,
                                     sort: None,
@@ -357,8 +402,8 @@ impl Component for ChannelMessages {
             }
         });
 
-        rect().padding((0., 8.)).child(
-            ScrollView::new().child(rect().padding((16., 0., 26., 0.)).spacing(12.).children(
+        rect().padding((0., 8.)).child(ScrollView::new().child(
+            rect().padding((16., 0., 26., 0.)).spacing(12.).children(
                 groups.read().iter().cloned().map(|messages| {
                     rect()
                         .key(format!(
@@ -373,7 +418,7 @@ impl Component for ChannelMessages {
                         })
                         .into_element()
                 }),
-            )),
-        )
+            ),
+        ))
     }
 }

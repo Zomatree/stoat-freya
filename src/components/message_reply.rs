@@ -1,7 +1,7 @@
 use freya::{icons::lucide::file_text, prelude::*};
 use stoat_models::v0;
 
-use crate::components::{MessageModel, avatar::avatar};
+use crate::components::{MessageModel, Avatar};
 
 #[derive(PartialEq)]
 pub struct MessageReply {
@@ -46,13 +46,7 @@ impl Component for MessageReply {
                     .spacing(4.)
                     .cross_align(Alignment::Center)
                     .child(
-                        self.reply
-                            .member
-                            .as_ref()
-                            .map(|r| avatar(&self.reply.user.read(), Some(&r.read())))
-                            .unwrap_or_else(|| avatar(&self.reply.user.read(), None))
-                            .width(Size::px(14.))
-                            .height(Size::px(14.)),
+                        Avatar::new(self.reply.user.clone(), self.reply.member.clone(), 14.)
                     )
                     .child(
                         label()

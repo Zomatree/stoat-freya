@@ -85,7 +85,7 @@ impl Component for Category {
                     .width(Size::Fill)
                     .child(
                         rect()
-                            .padding((10., 0., 0., 12.))
+                            .padding((10., 4., 0., 20.))
                             .color(0xffe3e1e9)
                             .horizontal()
                             .cross_align(Alignment::Center)
@@ -119,35 +119,37 @@ impl Component for Category {
                         }
                     }),
             )
-            .maybe_child(
-                is_expanded
-                    .read()
-                    .then(|| {
-                        rect().children(channels.read().iter().map(|channel| {
-                            rect()
-                                .key(channel.peek().id())
-                                .child(ChannelButton {
-                                    channel: channel.clone(),
-                                })
-                                .into_element()
-                        }))
-                    })
-                    .or({
-                        let selected = selected_channel.read();
-
-                        if let Some(id) = &*selected
-                            && let Some(channel) = channels
-                                .read()
-                                .iter()
-                                .find(|channel| channel.peek().id() == id)
-                        {
-                            Some(rect().key(channel.peek().id()).child(ChannelButton {
-                                channel: channel.clone(),
+            .child(
+                rect().maybe_child(
+                    is_expanded
+                        .read()
+                        .then(|| {
+                            rect().children(channels.read().iter().map(|channel| {
+                                rect()
+                                    .key(channel.peek().id())
+                                    .child(ChannelButton {
+                                        channel: channel.clone(),
+                                    })
+                                    .into_element()
                             }))
-                        } else {
-                            None
-                        }
-                    }),
+                        })
+                        .or({
+                            let selected = selected_channel.read();
+
+                            if let Some(id) = &*selected
+                                && let Some(channel) = channels
+                                    .read()
+                                    .iter()
+                                    .find(|channel| channel.peek().id() == id)
+                            {
+                                Some(rect().key(channel.peek().id()).child(ChannelButton {
+                                    channel: channel.clone(),
+                                }))
+                            } else {
+                                None
+                            }
+                        }),
+                ),
             )
     }
 

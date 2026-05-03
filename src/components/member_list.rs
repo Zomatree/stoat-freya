@@ -5,8 +5,8 @@ use stoat_models::v0;
 
 use crate::{
     AppChannel,
-    components::{StoatButton, avatar},
-    http,
+    components::{Avatar, StoatButton},
+    http, member_display_color,
 };
 
 #[derive(Clone)]
@@ -18,7 +18,9 @@ enum ListValue {
 impl PartialEq for ListValue {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Self::Name(name0, length0), Self::Name(name1, length1)) => name0 == name1 && length0 == length1,
+            (Self::Name(name0, length0), Self::Name(name1, length1)) => {
+                name0 == name1 && length0 == length1
+            }
             (Self::Member(user0, _), Self::Member(user1, _)) => user0.peek().id == user1.peek().id,
             _ => false,
         }
@@ -190,39 +192,40 @@ impl Component for MemberList {
                             member.into_readable(),
                         ));
                     }
-                };
+                }
 
                 elements
             }
         });
 
-        rect().child(VirtualScrollView::new({
-            let elements = elements.clone();
-            let server = self.server.clone();
+        rect().child(
+            VirtualScrollView::new({
+                let elements = elements.clone();
+                let server = self.server.clone();
 
-            move |i, _| {
-                let element = elements.read()[i].clone();
+                move |i, _| {
+                    let element = elements.read()[i].clone();
 
-                match element {
-                    ListValue::Name(name, count) => {
-                        rect()
+                    match element {
+                        ListValue::Name(name, count) => rect()
                             .key(&name)
                             .height(Size::px(42.))
                             .padding((0., 14.))
                             .main_align(Alignment::End)
                             .child(label().text(format!("{name} - {count}")).font_size(11.))
-                            .into_element()
-                    },
-                    ListValue::Member(user, member) => {
-                        MemberListMember {
+                            .into_element(),
+                        ListValue::Member(user, member) => MemberListMember {
                             server: server.clone(),
                             member,
                             user,
-                        }.into_element()
+                        }
+                        .into_element(),
                     }
                 }
-            }
-        }).item_size(42.).length(elements.read().len()))
+            })
+            .item_size(42.)
+            .length(elements.read().len()),
+        )
 
         // rect().child(
         //     VirtualScrollView::new({
@@ -270,6 +273,8 @@ pub struct MemberListMember {
 
 impl Component for MemberListMember {
     fn render(&self) -> impl IntoElement {
+        let radio = use_radio(AppChannel::UserProfile);
+        let mut user_profile = radio.slice_mut_current(|state| &mut state.user_profile);
         // let user = use_memo({
         //     let user = self.user.clone();
         //     move || user.read().clone()
@@ -277,76 +282,105 @@ impl Component for MemberListMember {
 
         // let member = use_memo()
 
+        let role_color = use_memo({
+            let server = self.server.clone();
+            let member = self.member.clone();
+
+            move || member_display_color(&member.read(), &server.read())
+        });
+
+        let display_name = use_memo({
+            let user = self.user.clone();
+            let member = self.member.clone();
+
+            move || {
+                member.read().nickname.clone().unwrap_or_else(|| {
+                    let user = user.read();
+
+                    user.display_name.as_ref().unwrap_or(&user.username).clone()
+                })
+            }
+        });
+
         rect()
             .padding((0., 16., 0., 4.))
             .height(Size::px(42.))
+            .width(Size::Fill)
             .child(
-                StoatButton::new().child(
-                    rect()
-                        .padding((0., 8.))
-                        .horizontal()
-                        .height(Size::Fill)
-                        .cross_align(Alignment::Center)
-                        .spacing(8.)
-                        .child(
-                            avatar(&self.user.read(), Some(&self.member.read()))
-                                .width(Size::px(32.))
-                                .height(Size::px(32.)),
-                        )
-                        .child(
-                            rect()
-                                .child(
-                                    label()
-                                        .text({
-                                            let user = self.user.read();
-                                            let member = self.member.read();
-                                            member
-                                                .nickname
-                                                .as_ref()
-                                                .or(user.display_name.as_ref())
-                                                .unwrap_or(&user.username)
-                                                .clone()
-                                        })
-                                        .font_size(14)
-                                        .max_lines(1)
-                                        .text_overflow(TextOverflow::Ellipsis),
-                                )
-                                .maybe_child(
-                                    self.user
-                                        .read()
-                                        .status
-                                        .as_ref()
-                                        .and_then(|status| {
-                                            status
-                                                .text
-                                                .as_ref()
-                                                .map(|text| Cow::Owned(text.clone()))
-                                                .or(status.presence.as_ref().map(|presence| {
-                                                    match presence {
-                                                        v0::Presence::Online => {
-                                                            Cow::Borrowed("Online")
+                StoatButton::new()
+                    .on_press({
+                        let user_id = self.user.peek().id.clone();
+                        move |_| {
+                            *user_profile.write() = Some(user_id.clone());
+                        }
+                    })
+                    .child(
+                        rect()
+                            .padding((0., 8.))
+                            .horizontal()
+                            .height(Size::Fill)
+                            .cross_align(Alignment::Center)
+                            .spacing(8.)
+                            .child(
+                                Avatar::new(self.user.clone(), Some(self.member.clone()), 32.)
+                                    .presence(true),
+                            )
+                            .child(
+                                rect()
+                                    .child(
+                                        label()
+                                            .text(display_name.read().clone())
+                                            .map(role_color.read().clone(), |this, color| {
+                                                if let Fill::Color(color) = color {
+                                                    this.color(color)
+                                                } else {
+                                                    this
+                                                }
+                                            })
+                                            .font_size(14)
+                                            .max_lines(1)
+                                            .text_overflow(TextOverflow::Ellipsis),
+                                    )
+                                    .maybe_child(
+                                        self.user
+                                            .read()
+                                            .status
+                                            .as_ref()
+                                            .and_then(|status| {
+                                                status
+                                                    .text
+                                                    .as_ref()
+                                                    .map(|text| Cow::Owned(text.clone()))
+                                                    .or(status.presence.as_ref().map(|presence| {
+                                                        match presence {
+                                                            v0::Presence::Online => {
+                                                                Cow::Borrowed("Online")
+                                                            }
+                                                            v0::Presence::Idle => {
+                                                                Cow::Borrowed("Idle")
+                                                            }
+                                                            v0::Presence::Focus => {
+                                                                Cow::Borrowed("Focus")
+                                                            }
+                                                            v0::Presence::Busy => {
+                                                                Cow::Borrowed("Busy")
+                                                            }
+                                                            v0::Presence::Invisible => {
+                                                                Cow::Borrowed("Invisible")
+                                                            }
                                                         }
-                                                        v0::Presence::Idle => Cow::Borrowed("Idle"),
-                                                        v0::Presence::Focus => {
-                                                            Cow::Borrowed("Focus")
-                                                        }
-                                                        v0::Presence::Busy => Cow::Borrowed("Busy"),
-                                                        v0::Presence::Invisible => {
-                                                            Cow::Borrowed("Invisible")
-                                                        }
-                                                    }
-                                                }))
-                                        })
-                                        .map(|text| {
-                                            label()
-                                                .text(text)
-                                                .font_size(11)
-                                                .max_lines(1)
-                                                .text_overflow(TextOverflow::Ellipsis)
-                                        }),
-                                ),
-                        ),
-                ),
+                                                    }))
+                                            })
+                                            .map(|text| {
+                                                label()
+                                                    .text(text)
+                                                    .font_size(11)
+                                                    .max_lines(1)
+                                                    .text_overflow(TextOverflow::Ellipsis)
+                                            }),
+                                    ),
+                            ),
+                    ),
             )
     }
 

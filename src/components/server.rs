@@ -5,7 +5,8 @@ use stoat_models::v0;
 
 use crate::{
     AppChannel,
-    components::{Channel, ChannelList, image}, use_config,
+    components::{Channel, ChannelList, image},
+    use_config,
 };
 
 #[derive(PartialEq)]
@@ -19,6 +20,7 @@ impl Component for Server {
         let radio = use_radio(AppChannel::SelectedChannel);
 
         let selected_channel = radio.slice_current(|state| &state.selected_channel);
+        let channels = radio.slice(AppChannel::Channels, |state| &state.channels);
 
         rect()
             .corner_radius(CornerRadius {
@@ -31,7 +33,7 @@ impl Component for Server {
             .background(0xff1b1b21)
             .overflow(Overflow::Clip)
             .direction(Direction::Horizontal)
-            .maybe_child(config.read().hide_channel_list.not().then(||
+            .maybe_child(config.read().hide_channel_list.not().then(|| {
                 rect()
                     .spacing(8.)
                     .child(rect().margin((8., 8., 0., 8.)).child(
@@ -87,24 +89,27 @@ impl Component for Server {
                     .child(ChannelList {
                         server: self.server.clone(),
                     })
-                    .width(Size::px(248.)),
+                    .width(Size::px(248.))
+            }))
+            .child(
+                if let Some(channel) = selected_channel.read().clone().and_then(|channel| {
+                    if channels.read().contains_key(&channel) {
+                        Some(radio.slice(AppChannel::Channels, move |state| {
+                            state.channels.get(&channel).unwrap()
+                        }))
+                    } else {
+                        None
+                    }
+                }) {
+                    Channel {
+                        channel: channel.into_readable(),
+                        server: Some(self.server.clone()),
+                    }
+                    .into_element()
+                } else {
+                    "No selected channel".into_element()
+                },
             )
-        )
-            .child(if selected_channel.read().is_some() {
-                let channel = radio.slice(AppChannel::Channels, move |state| {
-                    state
-                        .channels
-                        .get(selected_channel.read().as_ref().unwrap())
-                        .unwrap()
-                });
-                Channel {
-                    channel: channel.into_readable(),
-                    server: Some(self.server.clone()),
-                }
-                .into_element()
-            } else {
-                "No selected channel".into_element()
-            })
     }
 
     fn render_key(&self) -> DiffKey {

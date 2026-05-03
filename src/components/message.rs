@@ -1,8 +1,12 @@
-use freya::prelude::*;
+use freya::{prelude::*, radio::use_radio};
 use jiff::{Timestamp, tz::TimeZone};
 use stoat_models::v0;
 
-use crate::components::{MessageContent, MessageModel, MessageReply, avatar::avatar};
+use crate::{
+    AppChannel,
+    components::{Avatar, MessageContent, MessageModel, MessageReply},
+    member_display_color,
+};
 
 #[derive(PartialEq)]
 pub struct Message {
@@ -12,7 +16,53 @@ pub struct Message {
 
 impl Component for Message {
     fn render(&self) -> impl IntoElement {
+        let radio = use_radio(AppChannel::Servers);
+
         let message = self.message.message.read().clone();
+
+        let server = use_memo({
+            let member = self.message.member.clone();
+
+            move || {
+                if let Some(member) = &member {
+                    let member = member.peek();
+
+                    radio.read().servers.get(&member.id.server).cloned()
+                } else {
+                    None
+                }
+            }
+        });
+
+        let role_color = use_memo({
+            let member = self.message.member.clone();
+
+            move || {
+                if let Some(member) = &member
+                    && let Some(server) = &*server.read()
+                {
+                    member_display_color(&member.read(), server)
+                } else {
+                    None
+                }
+            }
+        });
+
+        let display_name = use_memo({
+            let user = self.message.user.clone();
+            let member = self.message.member.clone();
+
+            move || {
+                member
+                    .as_ref()
+                    .and_then(|member| member.read().nickname.clone())
+                    .unwrap_or_else(|| {
+                        let user = user.read();
+
+                        user.display_name.as_ref().unwrap_or(&user.username).clone()
+                    })
+            }
+        });
 
         rect()
             .maybe_child((!self.message.replies.is_empty()).then(|| {
@@ -37,15 +87,11 @@ impl Component for Message {
                             .main_align(Alignment::End)
                             .width(Size::px(54.))
                             .padding((2., 4.))
-                            .child(
-                                self.message
-                                    .member
-                                    .as_ref()
-                                    .map(|r| avatar(&self.message.user.read(), Some(&r.read())))
-                                    .unwrap_or_else(|| avatar(&self.message.user.read(), None))
-                                    .width(Size::px(36.))
-                                    .height(Size::px(36.)),
-                            ),
+                            .child(Avatar::new(
+                                self.message.user.clone(),
+                                self.message.member.clone(),
+                                36.,
+                            )),
                     )
                     .child(
                         rect()
@@ -56,26 +102,17 @@ impl Component for Message {
                                     .spacing(8.)
                                     .cross_align(Alignment::Center)
                                     .font_size(14)
+                                    // .background(background)
                                     .child(
                                         label()
-                                            .text(
-                                                self.message
-                                                    .member
-                                                    .as_ref()
-                                                    .and_then(|member| {
-                                                        member.read().nickname.clone()
-                                                    })
-                                                    .or_else(|| {
-                                                        self.message
-                                                            .user
-                                                            .read()
-                                                            .display_name
-                                                            .clone()
-                                                    })
-                                                    .unwrap_or_else(|| {
-                                                        self.message.user.read().username.clone()
-                                                    }),
-                                            )
+                                            .text(display_name.read().clone())
+                                            .map(role_color.read().clone(), |this, color| {
+                                                if let Fill::Color(color) = color {
+                                                    this.color(color)
+                                                } else {
+                                                    this
+                                                }
+                                            })
                                             .line_height(1.5),
                                     )
                                     .child(

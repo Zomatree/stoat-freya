@@ -17,6 +17,8 @@ pub struct Config {
     pub collapsed_categories: HashSet<String>,
     #[serde(default)]
     pub hide_channel_list: bool,
+    #[serde(default)]
+    pub hide_members_list: bool,
 }
 
 pub fn get_config_path() -> PathBuf {

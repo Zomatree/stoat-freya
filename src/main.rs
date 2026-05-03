@@ -62,9 +62,15 @@ fn app() -> impl IntoElement {
         theme
     });
 
-    let future = use_future(move || async {
-        let http = http::HttpClient::new(BASE.to_string(), None).await.unwrap();
-        HTTP.set(http).unwrap();
+    let future = use_future(move || {
+        let config = config.clone();
+
+        async move {
+            let http = http::HttpClient::new(BASE.to_string(), config.read().token.clone())
+                .await
+                .unwrap();
+            HTTP.set(http).unwrap();
+        }
     });
 
     rect()

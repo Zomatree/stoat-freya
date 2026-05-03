@@ -1,17 +1,24 @@
-use freya::radio::{RadioChannel, RadioStation};
-use indexmap::IndexMap;
+use freya::{
+    prelude::State,
+    radio::{RadioChannel, RadioStation},
+};
+use serde::Deserialize;
 use std::collections::HashMap;
 use stoat_database::events::client::EventV1;
 use stoat_models::v0::{
-    Channel, FieldsChannel, FieldsMessage, FieldsServer, Member, Message, RelationshipStatus,
-    Server, User,
+    Channel, FieldsChannel, FieldsMessage, FieldsServer, Member, Message, RelationshipStatus, Server, User, UserSettings
 };
+use stoat_result::ErrorType;
+
+use crate::{Config};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum ConnectionState {
     #[default]
     Disconnected,
     Connected,
+    Reconnecting,
+    Reconnected,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
@@ -28,25 +35,51 @@ pub enum SettingsPage {
     Account,
 }
 
+#[derive(Debug, Default, Deserialize)]
+pub struct OrderingSettings {
+    pub servers: Option<Vec<String>>
+}
+
+#[derive(Debug, Default)]
+pub struct Settings {
+    pub ordering: Option<OrderingSettings>,
+}
+
+#[derive(Debug, Default)]
+pub struct Ready {
+    pub events: bool,
+    pub settings: bool,
+}
+
+impl Ready {
+    pub fn is_ready(&self) -> bool {
+        self.events && self.settings
+    }
+}
+
 #[derive(Debug)]
 pub struct AppState {
     pub state: ConnectionState,
+    pub ready: Ready,
     pub selection: Selection,
     pub selected_channel: Option<String>,
     pub user_id: Option<String>,
     pub users: HashMap<String, User>,
-    pub servers: IndexMap<String, Server>,
+    pub servers: HashMap<String, Server>,
     pub members: HashMap<String, HashMap<String, Member>>,
     pub channels: HashMap<String, Channel>,
     pub channel_messages: HashMap<String, Vec<String>>,
     pub messages: HashMap<String, HashMap<String, Message>>,
-    pub settings: Option<SettingsPage>,
+    pub settings_page: Option<SettingsPage>,
+    pub user_profile: Option<String>,
+    pub settings: Settings,
 }
 
 impl Default for AppState {
     fn default() -> Self {
         let mut this = Self {
             state: Default::default(),
+            ready: Default::default(),
             selection: Default::default(),
             selected_channel: Default::default(),
             user_id: Default::default(),
@@ -56,7 +89,9 @@ impl Default for AppState {
             channels: Default::default(),
             channel_messages: Default::default(),
             messages: Default::default(),
-            settings: Default::default(),
+            settings_page: Default::default(),
+            user_profile: Default::default(),
+            settings: Default::default()
         };
 
         this.users.insert(
@@ -86,6 +121,7 @@ impl Default for AppState {
 pub enum AppChannel {
     State,
     Selection,
+    Ready,
     SelectedChannel,
     UserId,
     Users,
@@ -94,10 +130,13 @@ pub enum AppChannel {
     Channels,
     ChannelMessages,
     Messages,
-    Settings,
+    SettingsPage,
+    Settings(&'static str),
+    UserProfile
 }
 
-impl RadioChannel<AppState> for AppChannel {}
+impl RadioChannel<AppState> for AppChannel {
+}
 
 type AppStation = RadioStation<AppState, AppChannel>;
 
@@ -154,12 +193,14 @@ pub fn insert_channel(channel: Channel, mut station: AppStation) {
     station
         .write_channel(AppChannel::ChannelMessages)
         .channel_messages
-        .insert(channel.id().to_string(), Vec::new());
+        .entry(channel.id().to_string())
+        .or_default();
 
     station
         .write_channel(AppChannel::Messages)
         .messages
-        .insert(channel.id().to_string(), HashMap::new());
+        .entry(channel.id().to_string())
+        .or_default();
 
     station
         .write_channel(AppChannel::Channels)
@@ -264,15 +305,42 @@ pub fn set_selected_channel(channel_id: Option<String>, mut station: AppStation)
         .selected_channel = channel_id;
 }
 
-pub fn update_state(event: EventV1, station: RadioStation<AppState, AppChannel>) {
+pub fn update_settings(settings: UserSettings, mut station: AppStation) {
+    for (key, (_ts, payload)) in settings.into_iter() {
+        match key.as_str() {
+            "ordering" => {
+                if let Ok(value) = serde_json::from_str(&payload) {
+                    station.write_channel(AppChannel::Settings("ordering")).settings.ordering = Some(value)
+                }
+            },
+            _ => {}
+        }
+    }
+}
+
+pub fn update_state(
+    event: EventV1,
+    mut config: State<Config>,
+    mut station: RadioStation<AppState, AppChannel>,
+) {
     match event {
         EventV1::Bulk { v } => {
             for e in v {
-                update_state(e, station);
+                update_state(e, config, station);
             }
         }
         EventV1::Authenticated => {}
-        EventV1::Logout => {}
+        EventV1::Logout => {
+            config.write().token = None;
+        }
+        EventV1::Error { data } => match &data.error_type {
+            ErrorType::InvalidSession => {
+                config.write().token = None;
+            }
+            _ => {
+                log::error!("Error: {data:?}")
+            }
+        },
         EventV1::Pong { data: _ } => {}
         EventV1::Ready {
             users,
@@ -280,7 +348,7 @@ pub fn update_state(event: EventV1, station: RadioStation<AppState, AppChannel>)
             channels,
             members,
             emojis: _,
-            user_settings: _,
+            user_settings,
             channel_unreads: _,
             policy_changes: _,
             voice_states: _,
@@ -305,6 +373,10 @@ pub fn update_state(event: EventV1, station: RadioStation<AppState, AppChannel>)
                 insert_member(member, station);
             }
 
+            if let Some(settings) = user_settings {
+                update_settings(settings, station);
+            }
+
             // for voice_state in voice_states.into_iter().flatten() {
             //     context.cache.insert_voice_state(voice_state);
             // }
@@ -313,7 +385,17 @@ pub fn update_state(event: EventV1, station: RadioStation<AppState, AppChannel>)
             //     context.cache.insert_emoji(emoji);
             // }
 
-            set_state(ConnectionState::Connected, station);
+            {
+                let mut state = station.write_channel(AppChannel::State);
+
+                state.state = if state.state == ConnectionState::Reconnecting && state.ready.events {
+                    ConnectionState::Reconnected
+                } else {
+                    ConnectionState::Connected
+                };
+            }
+
+            station.write_channel(AppChannel::Ready).ready.events = true;
         }
         EventV1::Message(message) => {
             insert_message(message.clone(), station);
@@ -442,6 +524,9 @@ pub fn update_state(event: EventV1, station: RadioStation<AppState, AppChannel>)
         }
         EventV1::ChannelCreate(channel) => {
             insert_channel(channel, station);
+        }
+        EventV1::UserSettingsUpdate { id: _id, update } => {
+            update_settings(update, station);
         }
         // EventV1::MessageAppend {
         //     id,

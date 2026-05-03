@@ -2,21 +2,26 @@ use std::{sync::Arc, time::Duration};
 
 use freya::{
     prelude::*,
-    radio::{use_init_radio_station, use_radio, use_radio_station},
+    radio::{use_init_radio_station, use_radio},
 };
+use stoat_models::v0;
 use tokio::{
     sync::{Mutex, mpsc},
     time::sleep,
 };
 
-use crate::{AppChannel, AppState, ConnectionState, components, state, websocket};
+use crate::{
+    AppChannel, AppState, ConnectionState, components, http, state, update_settings, use_config,
+    websocket::{self, Event, LocalEvent},
+};
 
 #[derive(PartialEq)]
 pub struct App {}
 
 impl Component for App {
     fn render(&self) -> impl IntoElement {
-        use_init_radio_station::<AppState, AppChannel>(AppState::default);
+        let station = use_init_radio_station::<AppState, AppChannel>(AppState::default);
+        let config = use_config();
 
         let (_msg_s, msg_r) = use_hook(|| {
             let (s, r) = mpsc::unbounded_channel();
@@ -30,45 +35,82 @@ impl Component for App {
             (s, Arc::new(Mutex::new(r)))
         });
 
-        use_future(move || {
+        let ws = use_state(move || {
             let event_s = event_s.clone();
             let msg_r = msg_r.clone();
 
-            async move {
+            tokio::spawn(async move {
                 loop {
                     if let Err(e) = websocket::run(event_s.clone(), msg_r.clone()).await {
                         println!("{e:?}");
                     };
 
+                    event_s
+                        .send(Event::Local(LocalEvent::Disconnected))
+                        .unwrap();
                     sleep(Duration::from_secs(1)).await;
+                    event_s
+                        .send(Event::Local(LocalEvent::Reconnecting))
+                        .unwrap();
                 }
-            }
+            })
+            .abort_handle()
         });
 
-        let station = use_radio_station::<AppState, AppChannel>();
+        use_drop(move || ws.read().abort());
 
         use_future(move || {
             let event_r = event_r.clone();
-            let station = station.clone();
+            let mut station = station.clone();
 
             async move {
                 while let Some(event) = event_r.lock().await.recv().await {
-                    state::update_state(event, station);
                     println!("event");
+
+                    match event {
+                        Event::Stoat(event) => state::update_state(event, config, station),
+                        Event::Local(event) => {
+                            station.write_channel(AppChannel::State).state = match event {
+                                LocalEvent::Disconnected => ConnectionState::Disconnected,
+                                LocalEvent::Reconnecting => ConnectionState::Reconnecting,
+                                LocalEvent::Reconnected => ConnectionState::Reconnected,
+                                LocalEvent::Connected => ConnectionState::Connected,
+                            }
+                        }
+                    }
                 }
             }
         });
 
-        let radio = use_radio(AppChannel::State);
+        let radio = use_radio(AppChannel::Ready);
 
-        match radio.read().state {
-            ConnectionState::Connected => components::Client {}.into_element(),
-            ConnectionState::Disconnected => rect()
+        use_future(move || {
+            let mut radio = radio.clone();
+
+            async move {
+                if let Ok(settings) = http()
+                    .fetch_settings(&v0::OptionsFetchSettings {
+                        keys: vec!["ordering".to_string()],
+                    })
+                    .await
+                {
+                    println!("{settings:?}");
+                    update_settings(settings, station);
+                }
+
+                radio.write().ready.settings = true;
+            }
+        });
+
+        if radio.read().ready.is_ready() {
+            components::Client {}.into_element()
+        } else {
+            rect()
                 .width(Size::Fill)
                 .height(Size::Fill)
                 .center()
                 .child(CircularLoader::new())
-                .into_element(),
+                .into_element()
         }
     }
 }

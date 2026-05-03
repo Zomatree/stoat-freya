@@ -1,7 +1,7 @@
 use std::{borrow::Cow, collections::HashMap};
 
 use freya::{
-    icons::lucide::{chevron_left, hash},
+    icons::lucide::{chevron_left, hash, pin, users_round},
     prelude::*,
     radio::use_radio,
 };
@@ -106,17 +106,21 @@ impl Component for Channel {
         let attachments = use_state(HashMap::new);
 
         let hide_channel_list = config.read().hide_channel_list;
+        let hide_members_list = config.read().hide_members_list;
         let is_dm = self.server.is_none();
+
+        let search = use_state(String::new);
 
         rect()
             .child(
                 rect()
                     .horizontal()
                     .height(Size::px(48.))
-                    .padding((0., 16.))
-                    .margin((8., 8., 8., 0.))
+                    .padding((0., 24., 0., 16.))
+                    .margin((8., 0.))
                     .spacing(10.)
                     .cross_align(Alignment::Center)
+                    .content(Content::Flex)
                     .child(
                         StoatButton::new()
                             .on_press(move |_| {
@@ -160,6 +164,44 @@ impl Component for Channel {
                                 }
                             })
                             .font_size(16),
+                    )
+                    .child(rect().width(Size::flex(1.)))
+                    .child(
+                        StoatButton::new().on_press(move |_| {}).child(
+                            rect()
+                                .horizontal()
+                                .height(Size::px(40.))
+                                .padding((0., 8.))
+                                .center()
+                                .child(svg(pin()).width(Size::px(24.)).height(Size::px(24.))),
+                        ),
+                    )
+                    .child(
+                        StoatButton::new()
+                            .on_press(move |_| {
+                                config.write().hide_members_list = !hide_members_list
+                            })
+                            .child(
+                                rect()
+                                    .horizontal()
+                                    .height(Size::px(40.))
+                                    .padding((0., 8.))
+                                    .center()
+                                    .child(
+                                        svg(users_round())
+                                            .width(Size::px(24.))
+                                            .height(Size::px(24.)),
+                                    ),
+                            ),
+                    )
+                    .child(
+                        Input::new(search)
+                            .placeholder("Search messages...")
+                            .border_fill(Color::TRANSPARENT)
+                            .inner_margin((10., 16.))
+                            .corner_radius(40.)
+                            .width(Size::px(240.))
+                            .background(0xff292a2f),
                     ),
             )
             .child(
@@ -168,7 +210,15 @@ impl Component for Channel {
                     .child(
                         rect()
                             .margin((0., 8., 8., 8.))
-                            .width(Size::func(move |size| Some(size.parent - if is_dm { 0. } else { 248. })))
+                            .width(Size::func_data(
+                                move |size| {
+                                    Some(
+                                        size.parent
+                                            - if is_dm || hide_members_list { 0. } else { 248. },
+                                    )
+                                },
+                                &(is_dm || hide_members_list),
+                            ))
                             .corner_radius(28.)
                             .background(0xff0d0e13)
                             .overflow(Overflow::Clip)
@@ -218,13 +268,15 @@ impl Component for Channel {
                                     }),
                             ),
                     )
-                    .maybe_child(self.server.as_ref().map(|server| {
-                        rect()
-                            .child(MemberList {
-                                server: server.clone(),
-                            })
-                            .min_width(Size::px(240.))
-                    })),
+                    .maybe_child(self.server.as_ref().filter(|_| !hide_members_list).map(
+                        |server| {
+                            rect()
+                                .child(MemberList {
+                                    server: server.clone(),
+                                })
+                                .min_width(Size::px(240.))
+                        },
+                    )),
             )
     }
 

@@ -12,6 +12,8 @@ pub enum Error {
     HttpError(StoatHttpError),
     RatelimitReached(RatelimitFailure),
     InternalError,
+    ClosedWs,
+    ClosedWsLocal,
 }
 
 impl From<reqwest::Error> for Error {

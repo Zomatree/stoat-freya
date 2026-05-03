@@ -123,7 +123,7 @@ impl Component for Welcome {
                                                         let mut radio = radio.clone();
 
                                                         move |_| {
-                                                            radio.write_channel(AppChannel::Settings).settings = Some(SettingsPage::default())
+                                                            radio.write_channel(AppChannel::SettingsPage).settings_page = Some(SettingsPage::default())
                                                         }
                                                     }
                                                 ))
