@@ -1,7 +1,9 @@
-use std::{cell::Ref, rc::Rc};
+use std::{cell::Ref, rc::Rc, time::SystemTime};
 
 use freya::{prelude::*, radio::Readable};
 use stoat_models::v0;
+
+use crate::{ChannelUnread, NotificationBadge, NotificationsSettings};
 
 pub fn map_readable<T, U>(readable: Readable<T>, f: impl Fn(&T) -> &U + 'static) -> Readable<U> {
     let f = Rc::new(f);
@@ -156,6 +158,71 @@ pub fn member_display_color(member: &v0::Member, server: &v0::Server) -> Option<
     };
 
     None
+}
+
+pub fn is_channel_muted(channel_id: &str, settings: Readable<Option<NotificationsSettings>>) -> bool {
+    let mute = settings
+        .read()
+        .as_ref()
+        .and_then(|n| n.channel_mutes.get(channel_id).cloned());
+
+    mute.is_some_and(|mute| {
+        mute.until.is_none_or(|ts| {
+            SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_millis()
+                < ts
+        })
+    })
+}
+
+pub fn is_server_muted(server_id: &str, settings: Readable<Option<NotificationsSettings>>) -> bool {
+    let mute = settings
+        .read()
+        .as_ref()
+        .and_then(|n| n.server_mutes.get(server_id).cloned());
+
+    mute.is_some_and(|mute| {
+        mute.until.is_none_or(|ts| {
+            SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_millis()
+                < ts
+        })
+    })
+}
+
+pub fn get_unread_badge(channel: &v0::Channel, unread: &ChannelUnread) -> Option<NotificationBadge> {
+    if !unread.mentions.is_empty() {
+        Some(NotificationBadge::Mentions(unread.mentions.len()))
+    } else {
+        let last_message_id = match &channel {
+            v0::Channel::TextChannel {
+                last_message_id, ..
+            }
+            | v0::Channel::Group {
+                last_message_id, ..
+            }
+            | v0::Channel::DirectMessage {
+                last_message_id, ..
+            } => last_message_id.as_ref(),
+            _ => None,
+        };
+
+        if (unread.last_id.is_none() && last_message_id.is_some())
+            || unread
+                .last_id
+                .as_ref()
+                .zip(last_message_id)
+                .is_some_and(|(last_id, last_message_id)| last_id < last_message_id)
+        {
+            Some(NotificationBadge::Unread)
+        } else {
+            None
+        }
+    }
 }
 
 // pub fn map_optional_readable<T, U>(

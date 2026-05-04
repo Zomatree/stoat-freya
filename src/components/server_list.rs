@@ -1,26 +1,30 @@
+use std::collections::HashMap;
+
 use freya::{
     icons::lucide::{compass, settings},
     prelude::*,
     radio::use_radio,
 };
+use stoat_models::v0;
 
 use crate::{
-    AppChannel, Config, Selection, SettingsPage,
-    components::{CurrentUserButton, HomeButton, StoatButton, server_icon},};
+    AppChannel, Selection, SettingsPage,
+    components::{CurrentUserButton, HomeButton, ServerListButton, StoatButton},
+    map_readable,
+};
 
 #[derive(PartialEq)]
 pub struct ServerList {}
 
 impl Component for ServerList {
     fn render(&self) -> impl IntoElement {
-        let config = use_consume::<State<Config>>();
         let mut radio = use_radio(AppChannel::Servers);
         let mut hovered = use_state(|| false);
 
-        let selection = radio.slice(AppChannel::Selection, |state| &state.selection);
         let order_settings = radio.slice(AppChannel::Settings("ordering"), |state| {
             &state.settings.ordering
         });
+
         let servers = radio.slice(AppChannel::Servers, |state| &state.servers);
         let members = radio.slice(AppChannel::Members, |state| &state.members);
         let user_id = radio.slice(AppChannel::UserId, |state| state.user_id.as_ref().unwrap());
@@ -29,23 +33,27 @@ impl Component for ServerList {
             move || {
                 let mut order = Vec::new();
 
-                let servers = servers.read();
-                let order_settings = order_settings.read().as_ref().and_then(|o| o.servers.as_ref()).cloned();
+                let server_map = servers.read();
+                let order_settings = order_settings
+                    .read()
+                    .as_ref()
+                    .and_then(|o| o.servers.as_ref())
+                    .cloned();
 
                 if let Some(ordering) = order_settings {
                     for id in ordering.clone() {
-                        if servers.contains_key(&id) {
+                        if server_map.contains_key(&id) {
                             order.push(id);
                         };
                     }
 
-                    for id in servers.keys() {
+                    for id in server_map.keys() {
                         if !ordering.contains(id) {
                             order.push(id.clone());
                         }
                     }
                 } else {
-                    let mut join_dates = servers
+                    let mut join_dates = server_map
                         .keys()
                         .cloned()
                         .map(|id| {
@@ -67,9 +75,15 @@ impl Component for ServerList {
                     order.extend(join_dates.into_iter().map(|(id, _)| id));
                 }
 
+                let readable = servers.clone().into_readable();
+
                 order
-                    .iter()
-                    .map(|id| servers.get(id).unwrap().clone())
+                    .into_iter()
+                    .map(|id| {
+                        map_readable::<HashMap<String, v0::Server>, _>(readable.clone(), move |servers| {
+                            servers.get(&id).unwrap()
+                        })
+                    })
                     .collect::<Vec<_>>()
             }
         });
@@ -91,68 +105,17 @@ impl Component for ServerList {
                                     .width(Size::px(32.))
                                     .background(0xff45464f),
                             )
-                            .children(ordered_servers.read().iter().cloned().map(|server| {
+                            .child(
                                 rect()
-                                    .key(server.id.clone())
-                                    .maybe_child(
-                                        (&*selection.read()
-                                            == &Selection::Server(server.id.clone()))
-                                            .then(|| {
-                                                rect()
-                                                    .width(Size::px(12.))
-                                                    .height(Size::px(32.))
-                                                    .layer(Layer::RelativeOverlay(1))
-                                                    .position(
-                                                        Position::new_absolute().left(-16.).top(5.),
-                                                    )
-                                                    .corner_radius(4.)
-                                                    .background(0xffe3e1e9)
-                                            }),
-                                    )
-                                    .child(
-                                        rect()
-                                            .width(Size::px(42.0))
-                                            .height(Size::px(42.0))
-                                            .corner_radius(42.)
-                                            .overflow(Overflow::Clip)
-                                            .child(server_icon(&server))
-                                            .on_press({
-                                                move |_| {
-                                                    radio
-                                                        .write_channel(AppChannel::Selection)
-                                                        .selection =
-                                                        Selection::Server(server.id.clone());
-
-                                                    let channel_id = config
-                                                        .read()
-                                                        .last_channels
-                                                        .get(&server.id)
-                                                        .or_else(|| {
-                                                            let channels = radio.slice(
-                                                                AppChannel::Channels,
-                                                                |state| &state.channels,
-                                                            );
-
-                                                            server.channels.iter().find(|&id| {
-                                                                channels.read().contains_key(id)
-                                                            })
-                                                        })
-                                                        .cloned();
-
-                                                    radio
-                                                        .write_channel(AppChannel::SelectedChannel)
-                                                        .selected_channel = channel_id;
-                                                }
-                                            })
-                                            .on_pointer_enter(|_| {
-                                                Cursor::set(CursorIcon::Pointer);
-                                            })
-                                            .on_pointer_leave(|_| {
-                                                Cursor::set(CursorIcon::Default);
-                                            }),
-                                    )
-                                    .into_element()
-                            }))
+                                    .width(Size::fill())
+                                    .cross_align(Alignment::Center)
+                                    .spacing(8.)
+                                    .children(
+                                        ordered_servers.read().iter().cloned().map(|server| {
+                                            ServerListButton { server }.into_element()
+                                        }),
+                                    ),
+                            )
                             .child(
                                 StoatButton::new()
                                     .child(

@@ -12,7 +12,7 @@ use reqwest::{
 use scc::HashMap;
 use serde::{Deserialize, Serialize};
 use stoat_models::v0::{
-    AllMemberResponse, BanListResult, BulkMessageResponse, Channel, CreateVoiceUserResponse, CreateWebhookBody, DataBanCreate, DataCreateRole, DataCreateServerChannel, DataDefaultChannelPermissions, DataEditChannel, DataEditMessage, DataEditRole, DataEditRoleRanks, DataEditServer, DataEditUser, DataEditWebhook, DataJoinCall, DataMemberEdit, DataMessageSend, DataSetRolePermissions, DataSetServerRolePermission, Emoji, FetchServerResponse, FlagResponse, Invite, Member, Message, MutualResponse, NewRoleResponse, OptionsBulkDelete, OptionsFetchAllMembers, OptionsFetchServer, OptionsFetchSettings, OptionsQueryMessages, OptionsServerDelete, OptionsUnreact, ResponseWebhook, Role, Server, ServerBan, User, UserProfile, UserSettings, Webhook
+    AllMemberResponse, BanListResult, BulkMessageResponse, Channel, ChannelUnread, CreateVoiceUserResponse, CreateWebhookBody, DataBanCreate, DataCreateRole, DataCreateServerChannel, DataDefaultChannelPermissions, DataEditChannel, DataEditMessage, DataEditRole, DataEditRoleRanks, DataEditServer, DataEditUser, DataEditWebhook, DataJoinCall, DataMemberEdit, DataMessageSend, DataSetRolePermissions, DataSetServerRolePermission, Emoji, FetchServerResponse, FlagResponse, Invite, Member, Message, MutualResponse, NewRoleResponse, OptionsBulkDelete, OptionsFetchAllMembers, OptionsFetchServer, OptionsFetchSettings, OptionsQueryMessages, OptionsServerDelete, OptionsUnreact, ResponseWebhook, Role, Server, ServerBan, User, UserProfile, UserSettings, Webhook
 };
 use stoat_permissions::DataPermissionsValue;
 use tokio::time::sleep;
@@ -722,6 +722,12 @@ impl HttpClient {
     pub async fn fetch_settings(&self, data: &OptionsFetchSettings) -> Result<UserSettings> {
         self.request(Method::POST, format!("/sync/settings/fetch"))
             .body(data)
+            .response()
+            .await
+    }
+
+    pub async fn fetch_unreads(&self) -> Result<Vec<ChannelUnread>> {
+        self.request(Method::GET, format!("/sync/unreads"))
             .response()
             .await
     }

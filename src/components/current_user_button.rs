@@ -34,7 +34,6 @@ impl Component for CurrentUserButton {
                     .flat()
                     .padding(0.)
                     .child(Avatar::new(current_user.clone().into_readable(), None, 42.).presence(true))
-                    .corner_radius(42.)
                     .on_press(move |_| show_popup.toggle()),
             )
             .maybe_child(show_popup.read().then(|| {

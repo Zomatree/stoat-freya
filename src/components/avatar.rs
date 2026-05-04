@@ -80,7 +80,7 @@ impl Component for Avatar {
 
                 rect()
                     .position(Position::new_absolute().left(pos).top(pos))
-                    .layer(Layer::Overlay)
+                    .layer(Layer::RelativeOverlay(1))
                     .width(Size::px(diameter))
                     .height(Size::px(diameter))
                     .corner_radius(diameter)
@@ -93,10 +93,3 @@ impl Component for Avatar {
         (&self.user.peek().id).into()
     }
 }
-
-// pub fn avatar(user: &v0::User, member: Option<&v0::Member>) -> Rect {
-
-// }
-
-// 27 / 32 = 0.84375
-// 27 / 32

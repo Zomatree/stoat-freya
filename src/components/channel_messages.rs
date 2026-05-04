@@ -23,7 +23,7 @@ pub struct MessageModel {
     pub message: Readable<v0::Message>,
     pub user: Readable<v0::User>,
     pub member: Option<Readable<v0::Member>>,
-    pub replies: Vec<MessageModel>,
+    pub replies: Vec<(String, Option<MessageModel>)>,
 }
 
 impl Debug for MessageModel {
@@ -44,13 +44,17 @@ impl Component for ChannelMessages {
         let mut member_radio = use_radio(AppChannel::Members);
 
         let messages_models = use_state(Vec::<MessageModel>::new);
+        let task_running = use_state(|| None::<TaskHandle>);
 
         {
             let channel_messages = self.channel_messages.clone();
             let channel = self.channel.clone();
             let server = self.server.clone();
+            let mut task_running = task_running.clone();
 
             use_side_effect(move || {
+                task_running.take().inspect(|t| t.cancel());
+
                 let channel_messages = channel_messages.clone();
                 let channel = channel.clone();
                 let server = server.clone();
@@ -59,7 +63,7 @@ impl Component for ChannelMessages {
 
                 drop(channel_messages.read());
 
-                spawn(async move {
+                task_running.set(Some(spawn(async move {
                     let mut message_models = Vec::new();
                     let channel_id = channel.read().id().to_string();
                     let channel_messages = channel_messages.read().clone();
@@ -168,20 +172,26 @@ impl Component for ChannelMessages {
 
                                 if !exists {
                                     // TODO: handle deleted messages
-                                    let reply =
-                                        http().fetch_message(&channel_id, &reply_id).await.unwrap();
-
-                                    radio
-                                        .write()
-                                        .messages
-                                        .get_mut(&message.channel)
-                                        .unwrap()
-                                        .insert(reply_id.clone(), reply);
+                                    if let Ok(reply) =
+                                        http().fetch_message(&channel_id, &reply_id).await
+                                    {
+                                        radio
+                                            .write()
+                                            .messages
+                                            .get_mut(&message.channel)
+                                            .unwrap()
+                                            .insert(reply_id.clone(), reply);
+                                    } else {
+                                        replies.push((reply_id, None));
+                                        continue;
+                                    }
                                 };
 
                                 let message_readable: Readable<v0::Message> = radio
                                     .slice_current({
                                         let channel_id = channel_id.clone();
+                                        let reply_id = reply_id.clone();
+
                                         move |state| {
                                             state
                                                 .messages
@@ -260,12 +270,12 @@ impl Component for ChannelMessages {
                                     None
                                 };
 
-                                replies.push(MessageModel {
+                                replies.push((reply_id, Some(MessageModel {
                                     message: message_readable,
                                     user,
                                     member,
                                     replies: Vec::new(),
-                                });
+                                })));
                             }
                         }
 
@@ -278,7 +288,7 @@ impl Component for ChannelMessages {
                     }
 
                     messages.set(message_models);
-                });
+                })));
             });
         }
 
@@ -314,11 +324,11 @@ impl Component for ChannelMessages {
                         .unwrap()
                         .to_zoned(TimeZone::system());
 
-                        let diff = (current_datetime.timestamp().as_second() - last_datetime.timestamp().as_second()).abs();
+                        let diff = (current_datetime.timestamp().as_second()
+                            - last_datetime.timestamp().as_second())
+                        .abs();
 
-                        if last_datetime.date() != current_datetime.date()
-                            || diff >= 420
-                        {
+                        if last_datetime.date() != current_datetime.date() || diff >= 420 {
                             groups.push(vec![model]);
                             continue;
                         }
@@ -332,7 +342,9 @@ impl Component for ChannelMessages {
 
                         let current_msg = model.message.read();
 
-                        if current_msg.system.is_some() || current_msg.masquerade != last_msg.masquerade {
+                        if current_msg.system.is_some()
+                            || current_msg.masquerade != last_msg.masquerade
+                        {
                             groups.push(vec![model]);
                             continue;
                         }
@@ -348,22 +360,28 @@ impl Component for ChannelMessages {
         };
 
         use_future({
-            let groups = groups.clone();
+            let channel_messages = self.channel_messages.clone();
             let channel = self.channel.clone();
             let radio = radio.clone();
+            let server = self.server.clone();
 
             move || {
-                let groups = groups.clone();
+                let channel_messages = channel_messages.clone();
                 let channel = channel.clone();
                 let mut radio = radio.clone();
+                let server = server.clone();
 
                 async move {
-                    let is_empty = groups.read().is_empty();
+                    let is_empty = channel_messages.read().is_empty();
 
                     if is_empty {
                         let channel = channel.read().id().to_string();
 
-                        let v0::BulkMessageResponse::JustMessages(mut messages) = http()
+                        let v0::BulkMessageResponse::MessagesAndUsers {
+                            mut messages,
+                            users,
+                            members,
+                        } = http()
                             .fetch_messages(
                                 &channel,
                                 &v0::OptionsQueryMessages {
@@ -372,7 +390,7 @@ impl Component for ChannelMessages {
                                     after: None,
                                     sort: None,
                                     nearby: None,
-                                    include_users: None,
+                                    include_users: Some(true),
                                 },
                             )
                             .await
@@ -380,6 +398,30 @@ impl Component for ChannelMessages {
                         else {
                             panic!()
                         };
+
+                        {
+                            let mut state = radio.write_channel(AppChannel::Users);
+
+                            for user in users {
+                                state.users.entry(user.id.clone()).or_insert(user);
+                            }
+                        }
+
+                        {
+                            if let Some(members) = members
+                                && let Some(server_id) = server.map(|s| s.read().id.clone())
+                            {
+                                let mut state = radio.write_channel(AppChannel::Members);
+
+                                let server_members = state.members.get_mut(&server_id).unwrap();
+
+                                for member in members {
+                                    server_members
+                                        .entry(member.id.user.clone())
+                                        .or_insert(member);
+                                }
+                            }
+                        }
 
                         messages.sort_by(|a, b| a.id.cmp(&b.id));
 

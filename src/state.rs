@@ -2,15 +2,16 @@ use freya::{
     prelude::State,
     radio::{RadioChannel, RadioStation},
 };
-use serde::Deserialize;
-use std::collections::HashMap;
+use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, HashSet};
 use stoat_database::events::client::EventV1;
 use stoat_models::v0::{
-    Channel, FieldsChannel, FieldsMessage, FieldsServer, Member, Message, RelationshipStatus, Server, User, UserSettings
+    Channel, FieldsChannel, FieldsMessage, FieldsServer, Member, Message, RelationshipStatus,
+    Server, User, UserSettings,
 };
 use stoat_result::ErrorType;
 
-use crate::{Config};
+use crate::Config;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum ConnectionState {
@@ -35,14 +36,49 @@ pub enum SettingsPage {
     Account,
 }
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub struct OrderingSettings {
-    pub servers: Option<Vec<String>>
+    pub servers: Option<Vec<String>>,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum NotificationState {
+    All,
+    Mention,
+    None,
+}
+
+#[derive(Debug, Clone, Copy, Default, Deserialize, Serialize)]
+pub struct MuteState {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub until: Option<u128>,
+}
+
+#[derive(Debug, Default, Deserialize, Serialize)]
+pub struct NotificationsSettings {
+    pub server: HashMap<String, NotificationState>,
+    pub channel: HashMap<String, NotificationState>,
+    pub server_mutes: HashMap<String, MuteState>,
+    pub channel_mutes: HashMap<String, MuteState>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NotificationBadge {
+    Unread,
+    Mentions(usize),
 }
 
 #[derive(Debug, Default)]
 pub struct Settings {
     pub ordering: Option<OrderingSettings>,
+    pub notifications: Option<NotificationsSettings>,
+}
+
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct ChannelUnread {
+    pub last_id: Option<String>,
+    pub mentions: HashSet<String>,
 }
 
 #[derive(Debug, Default)]
@@ -69,6 +105,7 @@ pub struct AppState {
     pub members: HashMap<String, HashMap<String, Member>>,
     pub channels: HashMap<String, Channel>,
     pub channel_messages: HashMap<String, Vec<String>>,
+    pub channel_unreads: HashMap<String, ChannelUnread>,
     pub messages: HashMap<String, HashMap<String, Message>>,
     pub settings_page: Option<SettingsPage>,
     pub user_profile: Option<String>,
@@ -88,10 +125,11 @@ impl Default for AppState {
             members: Default::default(),
             channels: Default::default(),
             channel_messages: Default::default(),
+            channel_unreads: Default::default(),
             messages: Default::default(),
             settings_page: Default::default(),
             user_profile: Default::default(),
-            settings: Default::default()
+            settings: Default::default(),
         };
 
         this.users.insert(
@@ -129,14 +167,14 @@ pub enum AppChannel {
     Members,
     Channels,
     ChannelMessages,
+    ChannelUnreads,
     Messages,
     SettingsPage,
     Settings(&'static str),
-    UserProfile
+    UserProfile,
 }
 
-impl RadioChannel<AppState> for AppChannel {
-}
+impl RadioChannel<AppState> for AppChannel {}
 
 type AppStation = RadioStation<AppState, AppChannel>;
 
@@ -310,11 +348,40 @@ pub fn update_settings(settings: UserSettings, mut station: AppStation) {
         match key.as_str() {
             "ordering" => {
                 if let Ok(value) = serde_json::from_str(&payload) {
-                    station.write_channel(AppChannel::Settings("ordering")).settings.ordering = Some(value)
+                    station
+                        .write_channel(AppChannel::Settings("ordering"))
+                        .settings
+                        .ordering = Some(value)
                 }
-            },
+            }
+            "notifications" => {
+                if let Ok(value) = Ok::<_, ()>(serde_json::from_str(&payload).unwrap()) {
+                    station
+                        .write_channel(AppChannel::Settings("notifications"))
+                        .settings
+                        .notifications = Some(value)
+                }
+            }
             _ => {}
         }
+    }
+}
+
+pub fn insert_channel_unread(id: String, unread: ChannelUnread, mut station: AppStation) {
+    station
+        .write_channel(AppChannel::ChannelUnreads)
+        .channel_unreads
+        .insert(id, unread);
+}
+
+pub fn ack_message(channel_id: &str, message_id: String, mut station: AppStation) {
+    if let Some(unread) = station
+        .write_channel(AppChannel::ChannelUnreads)
+        .channel_unreads
+        .get_mut(channel_id)
+    {
+        unread.mentions.retain(|id| id > &message_id);
+        unread.last_id = Some(message_id);
     }
 }
 
@@ -349,7 +416,7 @@ pub fn update_state(
             members,
             emojis: _,
             user_settings,
-            channel_unreads: _,
+            channel_unreads,
             policy_changes: _,
             voice_states: _,
         } => {
@@ -373,6 +440,17 @@ pub fn update_state(
                 insert_member(member, station);
             }
 
+            for channel_unread in channel_unreads.into_iter().flatten() {
+                insert_channel_unread(
+                    channel_unread.id.channel,
+                    ChannelUnread {
+                        last_id: channel_unread.last_id,
+                        mentions: channel_unread.mentions.into_iter().collect(),
+                    },
+                    station,
+                );
+            }
+
             if let Some(settings) = user_settings {
                 update_settings(settings, station);
             }
@@ -388,7 +466,8 @@ pub fn update_state(
             {
                 let mut state = station.write_channel(AppChannel::State);
 
-                state.state = if state.state == ConnectionState::Reconnecting && state.ready.events {
+                state.state = if state.state == ConnectionState::Reconnecting && state.ready.events
+                {
                     ConnectionState::Reconnected
                 } else {
                     ConnectionState::Connected
@@ -399,6 +478,35 @@ pub fn update_state(
         }
         EventV1::Message(message) => {
             insert_message(message.clone(), station);
+
+            update_channel(&message.channel, station, |channel| {
+                if let Channel::TextChannel {
+                    last_message_id, ..
+                }
+                | Channel::Group {
+                    last_message_id, ..
+                }
+                | Channel::DirectMessage {
+                    last_message_id, ..
+                } = channel
+                {
+                    *last_message_id = Some(message.id.clone());
+                }
+            });
+
+            if message
+                .mentions
+                .as_ref()
+                .is_some_and(|m| m.contains(station.peek().user_id.as_ref().unwrap()))
+            {
+                station
+                    .write_channel(AppChannel::ChannelUnreads)
+                    .channel_unreads
+                    .entry(message.channel.clone())
+                    .or_default()
+                    .mentions
+                    .insert(message.id);
+            }
         }
         EventV1::ServerUpdate { id, data, clear } => {
             update_server(&id, station, |server| {
@@ -527,6 +635,13 @@ pub fn update_state(
         }
         EventV1::UserSettingsUpdate { id: _id, update } => {
             update_settings(update, station);
+        }
+        EventV1::ChannelAck {
+            id,
+            user: _,
+            message_id,
+        } => {
+            ack_message(&id, message_id, station);
         }
         // EventV1::MessageAppend {
         //     id,

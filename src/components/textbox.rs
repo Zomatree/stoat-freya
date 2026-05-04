@@ -23,7 +23,6 @@ impl Component for Textbox {
         rect()
             .font_size(14)
             .horizontal()
-            // .width(Size::func(|size| Some(size.parent - 16.)))
             .min_height(Size::px(40.))
             .spacing(8.)
             .content(Content::Fit)
@@ -38,7 +37,7 @@ impl Component for Textbox {
                         bottom_left: 28.,
                         smoothing: 0.,
                     })
-                    .padding((8., 12., 8., 12.))
+                    .padding((4., 0.))
                     .cross_align(Alignment::Center)
                     .child(
                         rect().width(Size::px(62.)).center().child(
@@ -72,6 +71,8 @@ impl Component for Textbox {
                         rect()
                             .child(
                                 paragraph()
+                                    .margin((4., 2., 4., 6.))
+                                    // .width(Size::Fill)
                                     .width(Size::func(|size| Some(size.parent - 16.)))
                                     .a11y_id(focus.a11y_id())
                                     .cursor_index(editable.editor().read().cursor_pos())
@@ -188,41 +189,50 @@ impl Component for Textbox {
                             )
                             .maybe_child(editable.editor().read().to_string().is_empty().then(
                                 || {
-                                    label()
-                                        .text(format!(
-                                            "Message {}",
-                                            match &*self.channel.read() {
-                                                v0::Channel::DirectMessage {
-                                                    recipients, ..
-                                                } => {
-                                                    let user_id =
-                                                        radio.peek_state().user_id.clone().unwrap();
+                                    rect()
+                                        .child(
+                                            label()
+                                                .text(format!(
+                                                    "Message {}",
+                                                    match &*self.channel.read() {
+                                                        v0::Channel::DirectMessage {
+                                                            recipients,
+                                                            ..
+                                                        } => {
+                                                            let user_id = radio
+                                                                .peek_state()
+                                                                .user_id
+                                                                .clone()
+                                                                .unwrap();
 
-                                                    let other = recipients
-                                                        .iter()
-                                                        .find(|&id| id != &*user_id)
-                                                        .unwrap()
-                                                        .clone();
+                                                            let other = recipients
+                                                                .iter()
+                                                                .find(|&id| id != &*user_id)
+                                                                .unwrap()
+                                                                .clone();
 
-                                                    let user = radio.slice(
-                                                        AppChannel::Users,
-                                                        move |state| {
-                                                            state.users.get(&other).unwrap()
-                                                        },
-                                                    );
+                                                            let user = radio.slice(
+                                                                AppChannel::Users,
+                                                                move |state| {
+                                                                    state.users.get(&other).unwrap()
+                                                                },
+                                                            );
 
-                                                    Cow::Owned(user.read().username.clone())
-                                                }
-                                                v0::Channel::Group { name, .. }
-                                                | v0::Channel::TextChannel { name, .. } =>
-                                                    Cow::Owned(name.clone()),
-                                                v0::Channel::SavedMessages { .. } =>
-                                                    Cow::Borrowed("Saved Messages"),
-                                            }
-                                        ))
-                                        .color(0xff888888)
+                                                            Cow::Owned(user.read().username.clone())
+                                                        }
+                                                        v0::Channel::Group { name, .. }
+                                                        | v0::Channel::TextChannel {
+                                                            name, ..
+                                                        } => Cow::Owned(name.clone()),
+                                                        v0::Channel::SavedMessages { .. } =>
+                                                            Cow::Borrowed("Saved Messages"),
+                                                    }
+                                                ))
+                                                .color(0xff888888),
+                                        )
                                         .layer(Layer::RelativeOverlay(1))
                                         .position(Position::new_absolute())
+                                        .padding((4., 2., 4., 6.))
                                 },
                             )),
                     ),

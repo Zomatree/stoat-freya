@@ -1,7 +1,10 @@
-use freya::{icons::lucide::file_text, prelude::*};
+use freya::{
+    icons::lucide::{at_sign, circle_x, file_text},
+    prelude::*,
+};
 use stoat_models::v0;
 
-use crate::components::{ReplyController, ReplyIntent, Avatar};
+use crate::components::{Avatar, ReplyController, ReplyIntent, StoatButton};
 
 #[derive(PartialEq)]
 pub struct MessageReplyPreview {
@@ -28,6 +31,7 @@ impl Component for MessageReplyPreview {
             .width(Size::func(|size| Some(size.parent - 16.)))
             .padding((8., 16., 8., 16.))
             .horizontal()
+            .content(Content::Flex)
             .font_size(14)
             .spacing(4.)
             .cross_align(Alignment::Center)
@@ -37,9 +41,12 @@ impl Component for MessageReplyPreview {
                     .horizontal()
                     .spacing(4.)
                     .cross_align(Alignment::Center)
-                    .child(
-                        Avatar::new(message.user.clone(), message.member.clone(), 14.)
-                    )
+                    .width(Size::flex(1.))
+                    .child(Avatar::new(
+                        message.user.clone(),
+                        message.member.clone(),
+                        14.,
+                    ))
                     .child(message.user.read().username.clone())
                     .maybe_child(
                         has_attachments
@@ -65,28 +72,56 @@ impl Component for MessageReplyPreview {
                     ),
             )
             .child(
-                Button::new()
-                    .child(if self.reply.read().mention {
-                        "on"
-                    } else {
-                        "off"
+                rect()
+                    .horizontal()
+                    .spacing(15.)
+                    .cross_align(Alignment::Center)
+                    .main_align(Alignment::End)
+                    .child({
+                        let mention = self.reply.read().mention;
+
+                        StoatButton::new()
+                            .child(
+                                rect()
+                                    .spacing(4.)
+                                    .horizontal()
+                                    .cross_align(Alignment::Center)
+                                    .color(if mention { 0xffdde1ff } else { 0xff90909a })
+                                    .child(
+                                        svg(at_sign()).width(Size::px(16.)).height(Size::px(16.)),
+                                    )
+                                    .child(if mention {
+                                        "ON"
+                                    } else {
+                                        "OFF"
+                                    }),
+                            )
+                            .on_press({
+                                let mut replies = self.replies.clone();
+                                let message_id = message.message.peek().id.clone();
+
+                                move |_| {
+                                    replies.toggle_mention(&message_id);
+                                }
+                            })
                     })
-                    .on_press({
-                        let mut replies = self.replies.clone();
-                        let message_id = message.message.peek().id.clone();
+                    .child(
+                        StoatButton::new()
+                            .child(
+                                svg(circle_x())
+                                    .color(0xffdde1ff)
+                                    .width(Size::px(16.))
+                                    .height(Size::px(16.)),
+                            )
+                            .on_press({
+                                let mut replies = self.replies.clone();
+                                let message_id = message.message.peek().id.clone();
 
-                        move |_| {
-                            replies.toggle_mention(&message_id);
-                        }
-                    }),
+                                move |_| {
+                                    replies.remove_reply(&message_id);
+                                }
+                            }),
+                    ),
             )
-            .child(Button::new().child("X").on_press({
-                let mut replies = self.replies.clone();
-                let message_id = message.message.peek().id.clone();
-
-                move |_| {
-                    replies.remove_reply(&message_id);
-                }
-            }))
     }
 }

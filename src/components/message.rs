@@ -66,9 +66,9 @@ impl Component for Message {
 
         rect()
             .maybe_child((!self.message.replies.is_empty()).then(|| {
-                rect().children(self.message.replies.iter().cloned().map(|reply| {
+                rect().children(self.message.replies.iter().cloned().map(|(id, reply)| {
                     rect()
-                        .key(reply.message.peek().id.clone())
+                        .key(id)
                         .child(MessageReply {
                             channel: self.channel.clone(),
                             message: self.message.clone(),
@@ -79,7 +79,7 @@ impl Component for Message {
             }))
             .child(
                 rect()
-                    .direction(Direction::Horizontal)
+                    .horizontal()
                     .spacing(8.)
                     .child(
                         rect()
@@ -154,14 +154,14 @@ impl Component for Message {
                                                     )
                                                 }
                                             })
-                                            .color(Color::DARK_GRAY)
+                                            .color(0xff90909a)
                                             .font_size(12),
                                     )
                                     .maybe_child(message.edited.as_ref().map(|_ts| {
                                         label()
                                             .text("(edited)")
                                             .font_size(12)
-                                            .color(Color::DARK_GRAY)
+                                            .color(0xff90909a)
                                     })),
                             )
                             .child(MessageContent {

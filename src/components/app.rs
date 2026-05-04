@@ -90,7 +90,7 @@ impl Component for App {
             async move {
                 if let Ok(settings) = http()
                     .fetch_settings(&v0::OptionsFetchSettings {
-                        keys: vec!["ordering".to_string()],
+                        keys: vec!["ordering".to_string(), "notifications".to_string()],
                     })
                     .await
                 {
