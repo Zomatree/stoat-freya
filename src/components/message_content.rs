@@ -1,8 +1,9 @@
-use freya::prelude::*;
+use freya::{prelude::*, radio::use_radio};
 use stoat_models::v0;
 
 use crate::{
-    components::{MessageAttachment, MessageModel, MessageReactions},
+    AppChannel,
+    components::{MessageAttachment, MessageEdit, MessageModel, MessageReactions},
     map_readable,
 };
 
@@ -14,48 +15,56 @@ pub struct MessageContent {
 
 impl Component for MessageContent {
     fn render(&self) -> impl IntoElement {
+        let radio = use_radio(AppChannel::EditingMessage);
+
+        let editing_message = radio.slice_current(|state| &state.editing_message);
+
         rect()
             .font_size(14)
             .spacing(4.)
             .maybe_child(
-                self.message
-                    .message
+                editing_message
                     .read()
-                    .content
-                    .clone()
-                    .filter(|c| !c.is_empty())
-                    .map(|content| MarkdownViewer::new(content).paragraph_size(14.)),
+                    .cloned()
+                    .filter(|msg| &msg.id == &self.message.message.id)
+                    .map(|msg| {
+                        MessageEdit {
+                            channel: self.channel.clone(),
+                            id: msg.id,
+                            content: msg.content,
+                        }
+                        .into_element()
+                    })
+                    .or_else(|| {
+                        self.message
+                            .message
+                            .content
+                            .clone()
+                            .filter(|c| !c.is_empty())
+                            .map(|content| {
+                                SelectableText::new(content)
+                                .line_height(1.5)
+                                    .into_element()
+                                // MarkdownViewer::new(content)
+                                //     .paragraph_size(14.)
+                                //     .into_element()
+                            })
+                    }),
             )
+            .maybe_child(self.message.message.clone().attachments.and_then(|files| {
+                (!files.is_empty()).then(|| {
+                    rect().spacing(4.).children(
+                        files
+                            .into_iter()
+                            .map(|file| MessageAttachment { file }.into_element()),
+                    )
+                })
+            }))
             .maybe_child(
-                (!self.message.message.read().reactions.is_empty()).then(|| MessageReactions {
+                (!self.message.message.reactions.is_empty()).then(|| MessageReactions {
                     message: self.message.clone(),
                     channel: self.channel.clone(),
                 }),
-            )
-            .maybe_child(
-                self.message
-                    .message
-                    .read()
-                    .clone()
-                    .attachments
-                    .and_then(|files| {
-                        (!files.is_empty()).then(|| {
-                            rect().spacing(4.).children(files.into_iter().map(|file| {
-                                let readable =
-                                    map_readable(self.message.message.clone(), move |message| {
-                                        message
-                                            .attachments
-                                            .as_ref()
-                                            .unwrap()
-                                            .iter()
-                                            .find(|f| f.id == file.id)
-                                            .unwrap()
-                                    });
-
-                                MessageAttachment { file: readable }.into_element()
-                            }))
-                        })
-                    }),
             )
     }
 }

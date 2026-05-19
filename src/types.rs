@@ -1,6 +1,7 @@
 use std::fmt::Display;
 
 use serde::{Deserialize, Serialize};
+use stoat_models::v0;
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
 pub struct CaptchaFeature {
@@ -101,6 +102,12 @@ impl Into<&'static str> for Tag {
     }
 }
 
+impl Into<String> for Tag {
+    fn into(self) -> String {
+        self.to_string()
+    }
+}
+
 impl Display for Tag {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(self.as_str())
@@ -167,4 +174,272 @@ pub enum MFAMethod {
     Password,
     Recovery,
     Totp,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(untagged)]
+pub enum Ping {
+    Binary(Vec<u8>),
+    Number(usize),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(tag = "type")]
+pub enum EventV1 {
+    /// Multiple events
+    Bulk { v: Vec<EventV1> },
+    /// Error event
+    Error { data: stoat_result::Error },
+
+    /// Successfully authenticated
+    Authenticated,
+    /// Logged out
+    Logout,
+    /// Basic data to cache
+    Ready {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        users: Option<Vec<v0::User>>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        servers: Option<Vec<v0::Server>>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        channels: Option<Vec<v0::Channel>>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        members: Option<Vec<v0::Member>>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        emojis: Option<Vec<v0::Emoji>>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        voice_states: Option<Vec<v0::ChannelVoiceState>>,
+
+        #[serde(skip_serializing_if = "Option::is_none")]
+        user_settings: Option<v0::UserSettings>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        channel_unreads: Option<Vec<v0::ChannelUnread>>,
+
+        #[serde(skip_serializing_if = "Option::is_none")]
+        policy_changes: Option<Vec<v0::PolicyChange>>,
+    },
+
+    /// Ping response
+    Pong { data: Ping },
+    /// New message
+    Message(v0::Message),
+
+    /// Update existing message
+    MessageUpdate {
+        id: String,
+        channel: String,
+        data: v0::PartialMessage,
+        #[serde(default)]
+        clear: Vec<v0::FieldsMessage>,
+    },
+
+    /// Append information to existing message
+    MessageAppend {
+        id: String,
+        channel: String,
+        append: v0::AppendMessage,
+    },
+
+    /// Delete message
+    MessageDelete { id: String, channel: String },
+
+    /// New reaction to a message
+    MessageReact {
+        id: String,
+        channel_id: String,
+        user_id: String,
+        emoji_id: String,
+    },
+
+    /// Remove user's reaction from message
+    MessageUnreact {
+        id: String,
+        channel_id: String,
+        user_id: String,
+        emoji_id: String,
+    },
+
+    /// Remove a reaction from message
+    MessageRemoveReaction {
+        id: String,
+        channel_id: String,
+        emoji_id: String,
+    },
+
+    /// Bulk delete messages
+    BulkMessageDelete { channel: String, ids: Vec<String> },
+
+    /// New server
+    ServerCreate {
+        id: String,
+        server: v0::Server,
+        channels: Vec<v0::Channel>,
+        emojis: Vec<v0::Emoji>,
+        voice_states: Vec<v0::ChannelVoiceState>
+    },
+
+    /// Update existing server
+    ServerUpdate {
+        id: String,
+        data: v0::PartialServer,
+        #[serde(default)]
+        clear: Vec<v0::FieldsServer>,
+    },
+
+    /// Delete server
+    ServerDelete { id: String },
+
+    /// Update existing server member
+    ServerMemberUpdate {
+        id: v0::MemberCompositeKey,
+        data: v0::PartialMember,
+        #[serde(default)]
+        clear: Vec<v0::FieldsMember>,
+    },
+
+    /// User joins server
+    ServerMemberJoin {
+        id: String,
+        // Deprecated: use member.id.user
+        #[deprecated = "Use member.id.user instead"]
+        user: String,
+        member: v0::Member,
+    },
+
+    /// User left server
+    ServerMemberLeave {
+        id: String,
+        user: String,
+        reason: v0::RemovalIntention,
+    },
+
+    /// Server role created or updated
+    ServerRoleUpdate {
+        id: String,
+        role_id: String,
+        data: v0::PartialRole,
+        #[serde(default)]
+        clear: Vec<v0::FieldsRole>,
+    },
+
+    /// Server role deleted
+    ServerRoleDelete { id: String, role_id: String },
+
+    /// Server roles ranks updated
+    ServerRoleRanksUpdate { id: String, ranks: Vec<String> },
+
+    /// Update existing user
+    UserUpdate {
+        id: String,
+        data: v0::PartialUser,
+        #[serde(default)]
+        clear: Vec<v0::FieldsUser>,
+        event_id: Option<String>,
+    },
+
+    /// Relationship with another user changed
+    UserRelationship { id: String, user: v0::User },
+    /// Settings updated remotely
+    UserSettingsUpdate { id: String, update: v0::UserSettings },
+
+    /// User has been platform banned or deleted their account
+    ///
+    /// Clients should remove the following associated data:
+    /// - Messages
+    /// - DM Channels
+    /// - Relationships
+    /// - Server Memberships
+    ///
+    /// User flags are specified to explain why a wipe is occurring though not all reasons will necessarily ever appear.
+    UserPlatformWipe { user_id: String, flags: i32 },
+    /// New emoji
+    EmojiCreate(v0::Emoji),
+
+    /// Delete emoji
+    EmojiDelete { id: String },
+
+    /// New report
+    ReportCreate(v0::Report),
+    /// New channel
+    ChannelCreate(v0::Channel),
+
+    /// Update existing channel
+    ChannelUpdate {
+        id: String,
+        data: v0::PartialChannel,
+        #[serde(default)]
+        clear: Vec<v0::FieldsChannel>,
+    },
+
+    /// Delete channel
+    ChannelDelete { id: String },
+
+    /// User joins a group
+    ChannelGroupJoin { id: String, user: String },
+
+    /// User leaves a group
+    ChannelGroupLeave { id: String, user: String },
+
+    /// User started typing in a channel
+    ChannelStartTyping { id: String, user: String },
+
+    /// User stopped typing in a channel
+    ChannelStopTyping { id: String, user: String },
+
+    /// User acknowledged message in channel
+    ChannelAck {
+        id: String,
+        user: String,
+        message_id: String,
+    },
+
+    /// New webhook
+    WebhookCreate(v0::Webhook),
+
+    /// Update existing webhook
+    WebhookUpdate {
+        id: String,
+        data: v0::PartialWebhook,
+        remove: Vec<v0::FieldsWebhook>,
+    },
+
+    /// Delete webhook
+    WebhookDelete { id: String },
+
+    /// Voice events
+    VoiceChannelJoin {
+        id: String,
+        state: v0::UserVoiceState,
+    },
+    VoiceChannelLeave {
+        id: String,
+        user: String,
+    },
+    VoiceChannelMove {
+        user: String,
+        from: String,
+        to: String,
+        state: v0::UserVoiceState
+    },
+    UserVoiceStateUpdate {
+        id: String,
+        channel_id: String,
+        data: v0::PartialUserVoiceState,
+    },
+    UserMoveVoiceChannel {
+        node: String,
+        from: String,
+        to: String,
+        token: String,
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(tag = "type")]
+pub enum ClientMessage {
+    Authenticate { token: String },
+    BeginTyping { channel: String },
+    EndTyping { channel: String },
+    Subscribe { server_id: String },
+    Ping { data: Ping },
 }

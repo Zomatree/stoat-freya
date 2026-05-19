@@ -165,16 +165,6 @@ impl Component for DMList {
                                                 .channels
                                                 .insert(id.clone(), dm);
 
-                                            radio
-                                                .write_channel(AppChannel::ChannelMessages)
-                                                .channel_messages
-                                                .insert(id.clone(), Vec::new());
-
-                                            radio
-                                                .write_channel(AppChannel::Messages)
-                                                .messages
-                                                .insert(id.clone(), HashMap::new());
-
                                             id
                                         };
 

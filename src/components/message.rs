@@ -1,10 +1,12 @@
+use std::rc::Rc;
+
 use freya::{prelude::*, radio::use_radio};
 use jiff::{Timestamp, tz::TimeZone};
 use stoat_models::v0;
 
 use crate::{
     AppChannel,
-    components::{Avatar, MessageContent, MessageModel, MessageReply},
+    components::{Avatar, MessageContent, MessageModel, MessageReply, UserCard, use_floating},
     member_display_color,
 };
 
@@ -18,14 +20,12 @@ impl Component for Message {
     fn render(&self) -> impl IntoElement {
         let radio = use_radio(AppChannel::Servers);
 
-        let message = self.message.message.read().clone();
-
         let server = use_memo({
             let member = self.message.member.clone();
 
             move || {
                 if let Some(member) = &member {
-                    let member = member.peek();
+                    let member = member.read();
 
                     radio.read().servers.get(&member.id.server).cloned()
                 } else {
@@ -64,19 +64,45 @@ impl Component for Message {
             }
         });
 
+        let floating = use_floating();
+
+        let open_profile = {
+            let floating = floating.clone();
+            let user = self.message.user.clone();
+            let member = self.message.member.clone();
+
+            move || {
+                floating.clone().set(Some(
+                    UserCard {
+                        user: user.clone(),
+                        member: member.clone(),
+                    }
+                    .into_element(),
+                ));
+            }
+        };
+
         rect()
-            .maybe_child((!self.message.replies.is_empty()).then(|| {
-                rect().children(self.message.replies.iter().cloned().map(|(id, reply)| {
-                    rect()
-                        .key(id)
-                        .child(MessageReply {
-                            channel: self.channel.clone(),
-                            message: self.message.clone(),
-                            reply,
-                        })
-                        .into_element()
-                }))
-            }))
+            .child(
+                rect().children(
+                    self.message
+                        .message
+                        .replies
+                        .iter()
+                        .flatten()
+                        .cloned()
+                        .map(|id| {
+                            rect()
+                                .key(&id)
+                                .child(MessageReply {
+                                    channel: self.channel.clone(),
+                                    message: self.message.clone(),
+                                    id,
+                                })
+                                .into_element()
+                        }),
+                ),
+            )
             .child(
                 rect()
                     .horizontal()
@@ -87,15 +113,29 @@ impl Component for Message {
                             .main_align(Alignment::End)
                             .width(Size::px(54.))
                             .padding((2., 4.))
-                            .child(Avatar::new(
-                                self.message.user.clone(),
-                                self.message.member.clone(),
-                                36.,
-                            )),
+                            .child(
+                                rect()
+                                    .on_pointer_enter(move |_| {
+                                        Cursor::set(CursorIcon::Pointer);
+                                    })
+                                    .on_pointer_leave(move |_| {
+                                        Cursor::set(CursorIcon::default());
+                                    })
+                                    .on_press({
+                                        let open_profile = open_profile.clone();
+                                        move |_| open_profile()
+                                    })
+                                    .child(Avatar::new(
+                                        self.message.user.clone(),
+                                        self.message.member.clone(),
+                                        36.,
+                                    )),
+                            ),
                     )
                     .child(
                         rect()
                             .spacing(2.)
+                            .padding((0., 15., 0., 0.))
                             .child(
                                 rect()
                                     .horizontal()
@@ -106,21 +146,28 @@ impl Component for Message {
                                     .child(
                                         label()
                                             .text(display_name.read().clone())
-                                            .map(role_color.read().clone(), |this, color| {
-                                                if let Fill::Color(color) = color {
-                                                    this.color(color)
-                                                } else {
-                                                    this
-                                                }
+                                            // .map(role_color.read().clone(), |mut this, color| {
+                                            //     this.get_text_style_data().color = Some(color);
+                                            //     this
+                                            // })
+                                            .line_height(1.5)
+                                            .on_pointer_enter(move |_| {
+                                                Cursor::set(CursorIcon::Pointer);
                                             })
-                                            .line_height(1.5),
+                                            .on_pointer_leave(move |_| {
+                                                Cursor::set(CursorIcon::default());
+                                            })
+                                            .on_press({
+                                                let open_profile = open_profile.clone();
+                                                move |_| open_profile()
+                                            }),
                                     )
                                     .child(
                                         label()
                                             .text({
                                                 let datetime = Timestamp::try_from(
                                                     ulid::Ulid::from_string(
-                                                        &self.message.message.read().id,
+                                                        &self.message.message.id,
                                                     )
                                                     .unwrap()
                                                     .datetime(),
@@ -157,11 +204,8 @@ impl Component for Message {
                                             .color(0xff90909a)
                                             .font_size(12),
                                     )
-                                    .maybe_child(message.edited.as_ref().map(|_ts| {
-                                        label()
-                                            .text("(edited)")
-                                            .font_size(12)
-                                            .color(0xff90909a)
+                                    .maybe_child(self.message.message.edited.as_ref().map(|_ts| {
+                                        label().text("(edited)").font_size(12).color(0xff90909a)
                                     })),
                             )
                             .child(MessageContent {

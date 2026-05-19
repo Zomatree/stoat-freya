@@ -13,20 +13,24 @@ impl Component for HomeButton {
         let mut radio = use_radio(AppChannel::Selection);
 
         StoatButton::new()
-            .corner_radius(42.)
+            .width(Size::px(56.))
+            .height(Size::px(56.))
             .child(
-                rect()
-                    .width(Size::px(42.))
-                    .height(Size::px(42.))
-                    .center()
-                    .child(
-                        svg(house())
-                            .width(Size::px(24.))
-                            .height(Size::px(24.))
-                            .color(0xffe3e1e9),
-                    ),
+                rect().expanded().center().child(
+                    rect()
+                        .background(0xff1b1b21)
+                        .width(Size::px(42.))
+                        .height(Size::px(42.))
+                        .corner_radius(42.)
+                        .center()
+                        .child(
+                            svg(house())
+                                .width(Size::px(24.))
+                                .height(Size::px(24.))
+                                .color(0xffe3e1e9),
+                        ),
+                ),
             )
-            .background(0xff1b1b21)
             .on_press(move |_| {
                 radio.write().selection = Selection::Home;
                 radio

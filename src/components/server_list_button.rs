@@ -52,7 +52,10 @@ impl Component for ServerListButton {
                             }
                         })
                         .filter_map(|(id, unread)| {
-                            channels.read().get(&id).and_then(|channel| get_unread_badge(channel, &unread))
+                            channels
+                                .read()
+                                .get(&id)
+                                .and_then(|channel| get_unread_badge(channel, &unread))
                         })
                         .collect::<Vec<_>>();
 
@@ -92,53 +95,55 @@ impl Component for ServerListButton {
                         .layer(Layer::RelativeOverlay(1))
                         .position(
                             Position::new_absolute()
-                                .left(-16.)
-                                .top(if *selected.read() { 5. } else { 17. }),
+                                .left(-8.)
+                                .top(if *selected.read() { 12. } else { 24. }),
                         )
                         .corner_radius(4.)
                         .background(0xffe3e1e9)
                 }),
             )
             .child(
-                rect()
-                    .width(Size::px(42.0))
-                    .height(Size::px(42.0))
-                    .corner_radius(42.)
-                    .overflow(Overflow::Clip)
-                    .child(server_icon(&server.read()))
-                    .on_press({
-                        move |_| {
-                            radio.write_channel(AppChannel::Selection).selection =
-                                Selection::Server(server.peek().id.clone());
+                rect().center().width(Size::px(56.0)).height(Size::px(56.0)).child(
+                    rect()
+                        .width(Size::px(42.0))
+                        .height(Size::px(42.0))
+                        .corner_radius(42.)
+                        .overflow(Overflow::Clip)
+                        .child(server_icon(&server.read()))
+                        .on_press({
+                            move |_| {
+                                radio.write_channel(AppChannel::Selection).selection =
+                                    Selection::Server(server.peek().id.clone());
 
-                            let channel_id = config
-                                .read()
-                                .last_channels
-                                .get(&server.peek().id)
-                                .cloned()
-                                .or_else(|| {
-                                    let channels =
-                                        radio.slice(AppChannel::Channels, |state| &state.channels);
+                                let channel_id = config
+                                    .read()
+                                    .last_channels
+                                    .get(&server.peek().id)
+                                    .cloned()
+                                    .or_else(|| {
+                                        let channels = radio
+                                            .slice(AppChannel::Channels, |state| &state.channels);
 
-                                    server
-                                        .read()
-                                        .channels
-                                        .iter()
-                                        .find(|&id| channels.read().contains_key(id))
-                                        .cloned()
-                                });
+                                        server
+                                            .read()
+                                            .channels
+                                            .iter()
+                                            .find(|&id| channels.read().contains_key(id))
+                                            .cloned()
+                                    });
 
-                            radio
-                                .write_channel(AppChannel::SelectedChannel)
-                                .selected_channel = channel_id;
-                        }
-                    })
-                    .on_pointer_enter(|_| {
-                        Cursor::set(CursorIcon::Pointer);
-                    })
-                    .on_pointer_leave(|_| {
-                        Cursor::set(CursorIcon::Default);
-                    }),
+                                radio
+                                    .write_channel(AppChannel::SelectedChannel)
+                                    .selected_channel = channel_id;
+                            }
+                        })
+                        .on_pointer_enter(|_| {
+                            Cursor::set(CursorIcon::Pointer);
+                        })
+                        .on_pointer_leave(|_| {
+                            Cursor::set(CursorIcon::Default);
+                        }),
+                ),
             )
             .maybe_child(
                 badge

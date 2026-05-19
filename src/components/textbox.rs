@@ -18,7 +18,8 @@ impl Component for Textbox {
         let radio = use_radio(AppChannel::UserId);
         let holder = use_state(ParagraphHolder::default);
         let mut editable = use_editable(String::new, EditableConfig::new);
-        let focus = use_focus();
+        let a11y_id = use_a11y();
+        let focus = use_focus(a11y_id);
 
         rect()
             .font_size(14)
@@ -74,7 +75,8 @@ impl Component for Textbox {
                                     .margin((4., 2., 4., 6.))
                                     // .width(Size::Fill)
                                     .width(Size::func(|size| Some(size.parent - 16.)))
-                                    .a11y_id(focus.a11y_id())
+                                    .a11y_id(a11y_id)
+                                    .a11y_auto_focus(true)
                                     .cursor_index(editable.editor().read().cursor_pos())
                                     .cursor_style(CursorStyle::Line)
                                     .cursor_color(0xFFFFFFFF)
@@ -87,7 +89,7 @@ impl Component for Textbox {
                                             .unwrap_or_default(),
                                     )
                                     .on_mouse_down(move |e: Event<MouseEventData>| {
-                                        focus.request_focus();
+                                        a11y_id.request_focus();
                                         editable.process_event(EditableEvent::Down {
                                             location: e.element_location,
                                             editor_line: EditorLine::SingleParagraph,

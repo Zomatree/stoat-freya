@@ -136,7 +136,6 @@ impl Component for Login {
                 Popup::new()
                     .background(0xff292a2f)
                     .color(0xffe3e1e9)
-                    .show(true)
                     .width(Size::px(370.))
                     .on_close_request(move |_| {
                         mfa_ticket.set(None);
@@ -246,7 +245,7 @@ pub fn login_entry(
                 .width(Size::Fill)
                 .flat()
                 .background(Color::TRANSPARENT)
-                .hover_background(Color::TRANSPARENT)
+                .focus_background(Color::TRANSPARENT)
                 .focus_border_fill(Color::TRANSPARENT),
         )
 }

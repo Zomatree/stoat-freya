@@ -1,6 +1,6 @@
 use std::hash::Hash;
 
-use freya::{icons::lucide::hash, prelude::*, radio::use_radio};
+use freya::{icons::lucide::{hash, headset}, prelude::*, radio::use_radio};
 use stoat_models::v0;
 
 use crate::{AppChannel, Config, NotificationBadge, get_unread_badge, is_channel_muted};
@@ -68,6 +68,12 @@ impl Component for ChannelButton {
             .maybe(*selected.read(), |btn| {
                 btn.background(0xff384379).color(0xffdde1ff)
             })
+            .on_pointer_enter(move |_| {
+                Cursor::set(CursorIcon::Pointer);
+            })
+            .on_pointer_leave(move |_| {
+                Cursor::set(CursorIcon::default());
+            })
             .on_press({
                 let channel = channel.clone();
 
@@ -89,7 +95,7 @@ impl Component for ChannelButton {
                 }
             })
             .width(Size::Fill)
-            .child(svg(hash()).width(Size::px(24.)).height(Size::px(24.)))
+            .child(svg(if matches!(&*channel.read(), v0::Channel::TextChannel { voice: Some(_), .. }) { headset() } else { hash() }).width(Size::px(24.)).height(Size::px(24.)))
             .child(
                 label()
                     .text(channel.read().name().unwrap().to_string())

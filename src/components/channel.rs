@@ -28,12 +28,12 @@ pub struct ReplyController(State<Vec<ReplyIntent>>);
 impl ReplyController {
     pub fn get_replies(&self) -> impl Iterator<Item = Readable<ReplyIntent>> {
         self.0.read().clone().into_iter().map(|reply| {
-            let id = reply.message.message.peek().id.clone();
+            let id = reply.message.message.id.clone();
 
             map_readable::<Vec<ReplyIntent>, ReplyIntent>(self.0.into_readable(), move |replies| {
                 replies
                     .iter()
-                    .find(|r| r.message.message.peek().id == id)
+                    .find(|r| r.message.message.id == id)
                     .unwrap()
             })
         })
@@ -44,19 +44,19 @@ impl ReplyController {
             .0
             .write()
             .iter_mut()
-            .find(|r| r.message.message.peek().id == message_id)
+            .find(|r| r.message.message.id == message_id)
         {
             reply.mention = !reply.mention;
         }
     }
 
     pub fn add_reply(&mut self, message: MessageModel, mention: bool) {
-        let message_id = &message.message.peek().id;
+        let message_id = &message.message.id;
         let mut replies = self.0.write();
 
         if replies
             .iter()
-            .any(|reply| &reply.message.message.peek().id == message_id)
+            .any(|reply| &reply.message.message.id == message_id)
         {
             return;
         };
@@ -66,7 +66,7 @@ impl ReplyController {
 
     pub fn remove_reply(&mut self, message_id: &str) {
         self.0.with_mut(|mut replies| {
-            replies.retain(|r| r.message.message.peek().id != message_id);
+            replies.retain(|r| r.message.message.id != message_id);
         });
     }
 
@@ -76,7 +76,7 @@ impl ReplyController {
         replies
             .into_iter()
             .map(|reply| v0::ReplyIntent {
-                id: reply.message.message.peek().id.clone(),
+                id: reply.message.message.id.clone(),
                 mention: reply.mention,
                 fail_if_not_exists: Some(true),
             })
@@ -93,11 +93,7 @@ pub struct Channel {
 impl Component for Channel {
     fn render(&self) -> impl IntoElement {
         let mut config = use_config();
-        let radio = use_radio(AppChannel::ChannelMessages);
-
-        let channel = self.channel.clone();
-        let channel_messages = radio
-            .slice_current(move |state| state.channel_messages.get(channel.read().id()).unwrap());
+        let radio = use_radio(AppChannel::UserId);
 
         let mut textbox_size = use_state(Area::default);
         let textbox_height = textbox_size.read().height();
@@ -107,7 +103,6 @@ impl Component for Channel {
 
         let hide_channel_list = config.read().hide_channel_list;
         let hide_members_list = config.read().hide_members_list;
-        let is_dm = self.server.is_none();
 
         let search = use_state(String::new);
 
@@ -163,7 +158,8 @@ impl Component for Channel {
                                     Cow::Borrowed("Saved Messages")
                                 }
                             })
-                            .font_size(16),
+                            .font_size(16)
+                            .max_lines(1)
                     )
                     .child(rect().width(Size::flex(1.)))
                     .child(
@@ -195,30 +191,25 @@ impl Component for Channel {
                             ),
                     )
                     .child(
+                        rect().child(
                         Input::new(search)
                             .placeholder("Search messages...")
                             .border_fill(Color::TRANSPARENT)
                             .inner_margin((10., 16.))
                             .corner_radius(40.)
-                            .width(Size::px(240.))
-                            .background(0xff292a2f),
+                            .width(Size::Fill)
+                            .background(0xff292a2f)
+                        ).max_width(Size::px(240.))
                     ),
             )
             .child(
                 rect()
                     .horizontal()
+                    .content(Content::Flex)
                     .child(
                         rect()
+                            .width(Size::flex(1.))
                             .margin((0., 8., 8., 8.))
-                            .width(Size::func_data(
-                                move |size| {
-                                    Some(
-                                        size.parent
-                                            - if is_dm || hide_members_list { 0. } else { 248. },
-                                    )
-                                },
-                                &(is_dm || hide_members_list),
-                            ))
                             .corner_radius(28.)
                             .background(0xff0d0e13)
                             .overflow(Overflow::Clip)
@@ -231,7 +222,6 @@ impl Component for Channel {
                                     .child(ChannelMessages {
                                         replies,
                                         channel: self.channel.clone(),
-                                        channel_messages: channel_messages.into_readable(),
                                         server: self.server.clone(),
                                     }),
                             )
@@ -248,7 +238,7 @@ impl Component for Channel {
                                     }))
                                     .child(rect().children(replies.get_replies().map(|reply| {
                                         rect()
-                                            .key(&reply.read().message.message.peek().id)
+                                            .key(&reply.read().message.message.id)
                                             .margin((0., 0., 8., 0.))
                                             .child(MessageReplyPreview {
                                                 replies,
@@ -274,7 +264,8 @@ impl Component for Channel {
                                 .child(MemberList {
                                     server: server.clone(),
                                 })
-                                .min_width(Size::px(240.))
+                                .width(Size::px(248.))
+                                .padding((0., 8., 0., 0.))
                         },
                     )),
             )

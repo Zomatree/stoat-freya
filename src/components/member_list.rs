@@ -5,7 +5,7 @@ use stoat_models::v0;
 
 use crate::{
     AppChannel,
-    components::{Avatar, StoatButton},
+    components::{Avatar, StoatButton, UserCard, use_floating},
     http, member_display_color,
 };
 
@@ -158,39 +158,111 @@ impl Component for MemberList {
             }
         });
 
-        let elements = use_memo({
-            let groups = groups.clone();
-            let radio = radio.clone();
+        let role_members = use_memo({
             let server_id = self.server.peek().id.clone();
+
+            move || {
+                let mut out = Vec::new();
+
+                for (role, user_ids) in groups.read().iter() {
+                    let mut users = user_ids
+                        .iter()
+                        .cloned()
+                        .map(|user_id| {
+                            let user = radio.slice(AppChannel::Users, {
+                                let user_id = user_id.clone();
+                                move |state| state.users.get(&user_id).unwrap()
+                            });
+
+                            let member = radio.slice(AppChannel::Members, {
+                                let server_id = server_id.clone();
+                                move |state| {
+                                    state
+                                        .members
+                                        .get(&server_id)
+                                        .unwrap()
+                                        .get(&user_id)
+                                        .unwrap()
+                                }
+                            });
+
+                            (user.into_readable(), member.into_readable())
+                        })
+                        .collect::<Vec<(Readable<v0::User>, Readable<v0::Member>)>>();
+
+                    users.sort_by(|(user1, member1), (user2, member2)| {
+                        let user1 = user1.read();
+                        let member1 = member1.read();
+
+                        let user2 = user2.read();
+                        let member2 = member2.read();
+
+                        let a = member1
+                            .nickname
+                            .as_ref()
+                            .or(user1.display_name.as_ref())
+                            .unwrap_or(&user1.username)
+                            .to_ascii_lowercase();
+
+                        let b = member2
+                            .nickname
+                            .as_ref()
+                            .or(user2.display_name.as_ref())
+                            .unwrap_or(&user2.username)
+                            .to_ascii_lowercase();
+
+                        a.cmp(&b)
+
+                        // match (member1.nickname.as_ref(), member2.nickname.as_ref()) {
+                        //     (Some(nick1), Some(nick2)) => nick1.cmp(nick2),
+                        //     (Some(nick1), None) => {
+                        //         let user2 = user2.read();
+
+                        //         nick1.cmp(user2.display_name.as_ref().unwrap_or(&user2.username))
+                        //     }
+                        //     (None, Some(nick2)) => {
+                        //         let user1 = user1.read();
+
+                        //         user1
+                        //             .display_name
+                        //             .as_ref()
+                        //             .unwrap_or(&user1.username)
+                        //             .cmp(nick2)
+                        //     }
+                        //     (None, None) => {
+                        //         let user1 = user1.read();
+                        //         let user2 = user2.read();
+
+                        //         user1
+                        //             .display_name
+                        //             .as_ref()
+                        //             .unwrap_or(&user1.username)
+                        //             .cmp(user2.display_name.as_ref().unwrap_or(&user2.username))
+                        //     }
+                        // }
+                    });
+
+                    out.push((role.clone(), users));
+                }
+
+                out
+            }
+        });
+
+        let elements = use_memo({
+            let role_members = role_members.clone();
+            // let groups = groups.clone();
+            // let radio = radio.clone();
+            // let server_id = self.server.peek().id.clone();
 
             move || {
                 let mut elements = Vec::new();
 
-                for (title, members) in groups.read().iter() {
+                for (title, members) in role_members.read().iter() {
                     elements.push(ListValue::Name(title.clone(), members.len()));
 
-                    for user_id in members.clone() {
-                        let user = radio.slice(AppChannel::Users, {
-                            let user_id = user_id.clone();
-                            move |state| state.users.get(&user_id).unwrap()
-                        });
-
-                        let member = radio.slice(AppChannel::Members, {
-                            let server_id = server_id.clone();
-                            move |state| {
-                                state
-                                    .members
-                                    .get(&server_id)
-                                    .unwrap()
-                                    .get(&user_id)
-                                    .unwrap()
-                            }
-                        });
-
-                        elements.push(ListValue::Member(
-                            user.into_readable(),
-                            member.into_readable(),
-                        ));
+                    for (user, member) in members.clone() {
+                        elements.push(ListValue::Member(user, member));
                     }
                 }
 
@@ -273,14 +345,14 @@ pub struct MemberListMember {
 
 impl Component for MemberListMember {
     fn render(&self) -> impl IntoElement {
-        let radio = use_radio(AppChannel::UserProfile);
-        let mut user_profile = radio.slice_mut_current(|state| &mut state.user_profile);
         // let user = use_memo({
         //     let user = self.user.clone();
         //     move || user.read().clone()
         // });
 
         // let member = use_memo()
+
+        let floating = use_floating();
 
         let role_color = use_memo({
             let server = self.server.clone();
@@ -309,9 +381,17 @@ impl Component for MemberListMember {
             .child(
                 StoatButton::new()
                     .on_press({
-                        let user_id = self.user.peek().id.clone();
+                        let user = self.user.clone();
+                        let member = self.member.clone();
+
                         move |_| {
-                            *user_profile.write() = Some(user_id.clone());
+                            floating.clone().set(Some(
+                                UserCard {
+                                    user: user.clone(),
+                                    member: Some(member.clone()),
+                                }
+                                .into_element(),
+                            ));
                         }
                     })
                     .child(
@@ -330,13 +410,10 @@ impl Component for MemberListMember {
                                     .child(
                                         label()
                                             .text(display_name.read().clone())
-                                            .map(role_color.read().clone(), |this, color| {
-                                                if let Fill::Color(color) = color {
-                                                    this.color(color)
-                                                } else {
-                                                    this
-                                                }
-                                            })
+                                            // .map(role_color.read().clone(), |mut this, color| {
+                                            //     this.get_text_style_data().color = Some(color);
+                                            //     this
+                                            // })
                                             .font_size(14)
                                             .max_lines(1)
                                             .text_overflow(TextOverflow::Ellipsis),

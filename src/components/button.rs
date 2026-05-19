@@ -1,9 +1,7 @@
-use freya::prelude::{
-    AccessibilityExt, AccessibilityRole, ChildrenExt, Color, Component, ContainerExt,
-    ContainerSizeExt, CornerRadius, CornerRadiusExt, Cursor, CursorIcon, Element, Event,
-    EventHandler, EventHandlersExt, Gaps, IntoElement, MouseButton, Overflow, PressEventData, Size,
-    StyleExt, WritableUtils, define_theme, get_theme, rect, use_drop, use_focus, use_state,
-};
+// use freya::prelude::{
+//     AccessibilityExt, AccessibilityRole, ChildrenExt, Color, Component, ComponentKey, ContainerExt, ContainerSizeExt, CornerRadius, CornerRadiusExt, Cursor, CursorIcon, DiffKey, Element, Event, EventHandler, EventHandlersExt, Gaps, IntoElement, KeyExt, MouseButton, Overflow, Position, PressEventData, Size, StyleExt, WritableUtils, define_theme, get_theme, rect, use_drop, use_focus, use_state
+// };
+use freya::prelude::*;
 
 define_theme! {
     for = StoatButton;
@@ -41,6 +39,7 @@ pub struct StoatButton {
     theme_layout: Option<StoatButtonLayoutThemePartial>,
     elements: Vec<Element>,
     on_press: Option<EventHandler<Event<PressEventData>>>,
+    key: DiffKey,
 }
 
 impl StoatButton {
@@ -50,6 +49,7 @@ impl StoatButton {
             theme_layout: None,
             on_press: None,
             elements: Vec::default(),
+            key: DiffKey::None,
         }
     }
 
@@ -71,10 +71,18 @@ impl CornerRadiusExt for StoatButton {
     }
 }
 
+impl KeyExt for StoatButton {
+    fn write_key(&mut self) -> &mut DiffKey {
+        &mut self.key
+    }
+}
+
+
 impl Component for StoatButton {
     fn render(&self) -> impl IntoElement {
         let mut hovering = use_state(|| false);
-        let focus = use_focus();
+        let a11y_id = use_a11y();
+        let focus = use_focus(a11y_id);
 
         use_drop(move || {
             if hovering() {
@@ -101,7 +109,7 @@ impl Component for StoatButton {
 
         rect()
             .overflow(Overflow::Clip)
-            .a11y_id(focus.a11y_id())
+            .a11y_id(a11y_id)
             .a11y_role(AccessibilityRole::Button)
             .background(background)
             .padding(theme_layout.padding)
@@ -112,7 +120,7 @@ impl Component for StoatButton {
             .on_all_press({
                 let on_press = self.on_press.clone();
                 move |e: Event<PressEventData>| {
-                    focus.request_focus();
+                    a11y_id.request_focus();
                     match e.data() {
                         PressEventData::Mouse(data) => match data.button {
                             Some(MouseButton::Left) => {
@@ -140,6 +148,12 @@ impl Component for StoatButton {
             .on_pointer_leave(move |_| {
                 Cursor::set(CursorIcon::default());
             })
-            .children(self.elements.clone())
+            .content(Content::Fit)
+            .child(rect().children(self.elements.clone()))
+            .child(rect().position(Position::new_absolute()).width(Size::FillMinimum).height(Size::FillMinimum).interactive(false).background(0xffe3e1e9).overflow(Overflow::Clip).corner_radius(theme_layout.corner_radius).opacity(if *hovering.read() { 0.08 } else { 0. }))
+    }
+
+    fn render_key(&self) -> DiffKey {
+        self.key.clone().or(self.default_key())
     }
 }

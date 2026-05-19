@@ -38,13 +38,13 @@ impl Component for Avatar {
         rect()
             .width(Size::px(self.size))
             .height(Size::px(self.size))
-            .corner_radius(self.size)
-            .overflow(Overflow::Clip)
             .child(if let Some(image) = image {
                 image
                     .aspect_ratio(AspectRatio::Max)
                     .image_cover(ImageCover::Center)
                     .expanded()
+                                .corner_radius(self.size)
+            .overflow(Overflow::Clip)
             } else {
                 ImageViewer::new(
                     http()
@@ -54,6 +54,8 @@ impl Component for Avatar {
                 )
                 .sampling_mode(SamplingMode::Trilinear)
                 .expanded()
+                            .corner_radius(self.size)
+            .overflow(Overflow::Clip)
             })
             .maybe_child(self.presence.then(|| {
                 let diameter = (12. / 32.) * self.size;
@@ -80,7 +82,7 @@ impl Component for Avatar {
 
                 rect()
                     .position(Position::new_absolute().left(pos).top(pos))
-                    .layer(Layer::RelativeOverlay(1))
+                    .layer(Layer::Relative(5))
                     .width(Size::px(diameter))
                     .height(Size::px(diameter))
                     .corner_radius(diameter)

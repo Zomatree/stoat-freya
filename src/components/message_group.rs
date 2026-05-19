@@ -25,6 +25,7 @@ impl Component for MessageGroup {
                 ),
             )
             .children(self.messages[1..].iter().cloned().map(|message| {
+                println!("{:?}", message.message);
                 MessageActions::new(self.replies, self.channel.clone(), message.clone())
                     .child(rect().padding((2., 0.)).child(TrailingMessage {
                         channel: self.channel.clone(),

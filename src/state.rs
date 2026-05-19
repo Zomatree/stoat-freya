@@ -1,17 +1,26 @@
+use bytes::Bytes;
 use freya::{
+    icons::lucide::{
+        banknote, bot_message_square, circle_user_round, cpu, flask_conical, globe,
+        message_square_diff, mic, palette, shield_check,
+    },
     prelude::State,
     radio::{RadioChannel, RadioStation},
 };
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
-use stoat_database::events::client::EventV1;
+use std::{
+    collections::{HashMap, HashSet, VecDeque},
+    fmt::Debug,
+    rc::Rc,
+};
+
 use stoat_models::v0::{
-    Channel, FieldsChannel, FieldsMessage, FieldsServer, Member, Message, RelationshipStatus,
-    Server, User, UserSettings,
+    AppendMessage, Channel, FieldsChannel, FieldsMessage, FieldsServer, Member, Message,
+    PartialMessage, RelationshipStatus, Server, User, UserSettings,
 };
 use stoat_result::ErrorType;
 
-use crate::Config;
+use crate::{Config, types::EventV1};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum ConnectionState {
@@ -30,10 +39,54 @@ pub enum Selection {
     Discover,
 }
 
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub enum SettingsPage {
     #[default]
     Account,
+    Profile,
+    Sessions,
+    MyBots,
+    Feedback,
+    Voice,
+    Appearance,
+    Language,
+    SourceCode,
+    Advanced,
+    Donate,
+}
+
+impl SettingsPage {
+    pub fn title(&self) -> &'static str {
+        match self {
+            SettingsPage::Account => "My Account",
+            SettingsPage::Profile => "Profile",
+            SettingsPage::Sessions => "Sessions",
+            SettingsPage::MyBots => "My Bots",
+            SettingsPage::Feedback => "Feedback",
+            SettingsPage::Voice => "Voice",
+            SettingsPage::Appearance => "Appearance",
+            SettingsPage::Language => "Language",
+            SettingsPage::SourceCode => "Source Code",
+            SettingsPage::Advanced => "Advanced",
+            SettingsPage::Donate => "Donate",
+        }
+    }
+
+    pub fn icon(&self) -> Bytes {
+        match self {
+            SettingsPage::Account => Bytes::new(),
+            SettingsPage::Profile => circle_user_round(),
+            SettingsPage::Sessions => shield_check(),
+            SettingsPage::MyBots => bot_message_square(),
+            SettingsPage::Feedback => message_square_diff(),
+            SettingsPage::Voice => mic(),
+            SettingsPage::Appearance => palette(),
+            SettingsPage::Language => globe(),
+            SettingsPage::SourceCode => cpu(),
+            SettingsPage::Advanced => flask_conical(),
+            SettingsPage::Donate => banknote(),
+        }
+    }
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
@@ -93,7 +146,38 @@ impl Ready {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
+pub struct ChannelState {
+    pub messages: VecDeque<Message>,
+    pub at_start: bool,
+    pub at_end: bool,
+    pub scroll_pos: Option<i32>,
+}
+
+#[derive(Clone)]
+pub struct MessageHandlers {
+    pub on_message: Rc<dyn Fn(Message)>,
+    pub on_message_delete: Rc<dyn Fn(String, String)>,
+    pub on_message_update: Rc<dyn Fn(String, String, PartialMessage, Vec<FieldsMessage>)>,
+    pub on_message_react: Rc<dyn Fn(String, String, String, String)>,
+    pub on_message_unreact: Rc<dyn Fn(String, String, String, String)>,
+    pub on_message_remove_reaction: Rc<dyn Fn(String, String, String)>,
+    pub on_message_append: Rc<dyn Fn(String, String, AppendMessage)>,
+}
+
+impl Debug for MessageHandlers {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MessageHandlers").finish_non_exhaustive()
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct EditingMessage {
+    pub id: String,
+    pub content: String,
+}
+
+#[derive(Debug, Default)]
 pub struct AppState {
     pub state: ConnectionState,
     pub ready: Ready,
@@ -104,33 +188,19 @@ pub struct AppState {
     pub servers: HashMap<String, Server>,
     pub members: HashMap<String, HashMap<String, Member>>,
     pub channels: HashMap<String, Channel>,
-    pub channel_messages: HashMap<String, Vec<String>>,
+    pub channel_states: HashMap<String, ChannelState>,
+    pub channel_message_cache: HashMap<String, HashMap<String, Message>>,
     pub channel_unreads: HashMap<String, ChannelUnread>,
-    pub messages: HashMap<String, HashMap<String, Message>>,
     pub settings_page: Option<SettingsPage>,
     pub user_profile: Option<String>,
     pub settings: Settings,
+    pub message_handlers: Option<MessageHandlers>,
+    pub editing_message: Option<EditingMessage>,
 }
 
-impl Default for AppState {
-    fn default() -> Self {
-        let mut this = Self {
-            state: Default::default(),
-            ready: Default::default(),
-            selection: Default::default(),
-            selected_channel: Default::default(),
-            user_id: Default::default(),
-            users: Default::default(),
-            servers: Default::default(),
-            members: Default::default(),
-            channels: Default::default(),
-            channel_messages: Default::default(),
-            channel_unreads: Default::default(),
-            messages: Default::default(),
-            settings_page: Default::default(),
-            user_profile: Default::default(),
-            settings: Default::default(),
-        };
+impl AppState {
+    pub fn new() -> Self {
+        let mut this = Self::default();
 
         this.users.insert(
             "00000000000000000000000000".to_string(),
@@ -166,12 +236,14 @@ pub enum AppChannel {
     Servers,
     Members,
     Channels,
-    ChannelMessages,
+    ChannelStates,
     ChannelUnreads,
-    Messages,
+    ChannelMessageCache,
     SettingsPage,
     Settings(&'static str),
     UserProfile,
+    MessageHandlers,
+    EditingMessage,
 }
 
 impl RadioChannel<AppState> for AppChannel {}
@@ -229,45 +301,27 @@ pub fn insert_server(server: Server, mut station: AppStation) {
 
 pub fn insert_channel(channel: Channel, mut station: AppStation) {
     station
-        .write_channel(AppChannel::ChannelMessages)
-        .channel_messages
-        .entry(channel.id().to_string())
-        .or_default();
-
-    station
-        .write_channel(AppChannel::Messages)
-        .messages
-        .entry(channel.id().to_string())
-        .or_default();
-
-    station
         .write_channel(AppChannel::Channels)
         .channels
         .insert(channel.id().to_string(), channel);
 }
 
 pub fn insert_message(message: Message, mut station: AppStation) {
-    // if let Some(user) = message.user.clone() {
-    //     insert_user(user, station);
-    // }
+    if let Some(channel_state) = station
+        .write_channel(AppChannel::ChannelStates)
+        .channel_states
+        .get_mut(&message.channel)
+    {
+        if channel_state.at_end {
+            channel_state.messages.push_front(message.clone());
 
-    // if let Some(member) = message.member.clone() {
-    //     insert_member(member, station);
-    // }
-
-    station
-        .write_channel(AppChannel::Messages)
-        .messages
-        .entry(message.channel.clone())
-        .or_default()
-        .insert(message.id.clone(), message.clone());
-
-    station
-        .write_channel(AppChannel::ChannelMessages)
-        .channel_messages
-        .entry(message.channel.clone())
-        .or_default()
-        .push(message.id);
+            if channel_state.messages.len() > 50 {
+                channel_state.messages.resize_with(50, || unreachable!());
+            }
+        }
+    } else if let Some(handle) = &station.read().message_handlers {
+        (handle.on_message)(message)
+    }
 }
 
 pub fn insert_member(member: Member, mut station: AppStation) {
@@ -299,37 +353,13 @@ pub fn update_channel(channel_id: &str, mut station: AppStation, f: impl FnOnce(
     }
 }
 
-pub fn update_message(
-    message_id: &str,
-    channel_id: &str,
-    mut station: AppStation,
-    f: impl FnOnce(&mut Message),
-) {
-    if let Some(message) = station
-        .write_channel(AppChannel::Messages)
-        .messages
-        .get_mut(channel_id)
-        .and_then(|messages| messages.get_mut(message_id))
-    {
-        f(message)
-    }
-}
-
 pub fn delete_message(message_id: &str, channel_id: &str, mut station: AppStation) {
-    if let Some(messages) = station
-        .write_channel(AppChannel::Messages)
-        .messages
+    if let Some(channel_state) = station
+        .write_channel(AppChannel::ChannelStates)
+        .channel_states
         .get_mut(channel_id)
     {
-        messages.remove(message_id);
-    }
-
-    if let Some(messages) = station
-        .write_channel(AppChannel::ChannelMessages)
-        .channel_messages
-        .get_mut(channel_id)
-    {
-        messages.retain(|id| id != message_id);
+        channel_state.messages.retain(|id| id.id != message_id);
     }
 }
 
@@ -578,15 +608,23 @@ pub fn update_state(
             data,
             clear,
         } => {
-            update_message(&id, &channel, station, |message| {
-                message.apply_options(data.clone());
+            if let Some(channel_state) = station
+                .write_channel(AppChannel::ChannelStates)
+                .channel_states
+                .get_mut(&channel)
+            {
+                if let Some(message) = channel_state.messages.iter_mut().find(|m| m.id == id) {
+                    message.apply_options(data.clone());
 
-                for field in &clear {
-                    match field {
-                        FieldsMessage::Pinned => message.pinned = None,
+                    for field in &clear {
+                        match field {
+                            FieldsMessage::Pinned => message.pinned = None,
+                        }
                     }
                 }
-            });
+            } else if let Some(handle) = &station.read().message_handlers {
+                (handle.on_message_update)(channel, id, data, clear)
+            }
         }
         EventV1::MessageDelete { id, channel } => {
             delete_message(&id, &channel, station);
@@ -597,13 +635,21 @@ pub fn update_state(
             user_id,
             emoji_id,
         } => {
-            update_message(&id, &channel_id, station, |message| {
-                message
-                    .reactions
-                    .entry(emoji_id.clone())
-                    .or_default()
-                    .insert(user_id.clone());
-            });
+            if let Some(channel_state) = station
+                .write_channel(AppChannel::ChannelStates)
+                .channel_states
+                .get_mut(&channel_id)
+            {
+                if let Some(message) = channel_state.messages.iter_mut().find(|m| m.id == id) {
+                    message
+                        .reactions
+                        .entry(emoji_id.clone())
+                        .or_default()
+                        .insert(user_id.clone());
+                }
+            } else if let Some(handle) = &station.read().message_handlers {
+                (handle.on_message_react)(channel_id, id, emoji_id, user_id)
+            }
         }
         EventV1::MessageUnreact {
             id,
@@ -611,24 +657,40 @@ pub fn update_state(
             user_id,
             emoji_id,
         } => {
-            update_message(&id, &channel_id, station, |message| {
-                if let Some(users) = message.reactions.get_mut(&emoji_id) {
-                    users.remove(&user_id);
+            if let Some(channel_state) = station
+                .write_channel(AppChannel::ChannelStates)
+                .channel_states
+                .get_mut(&channel_id)
+            {
+                if let Some(message) = channel_state.messages.iter_mut().find(|m| m.id == id) {
+                    if let Some(users) = message.reactions.get_mut(&emoji_id) {
+                        users.remove(&user_id);
 
-                    if users.is_empty() {
-                        message.reactions.remove(&emoji_id);
-                    };
+                        if users.is_empty() {
+                            message.reactions.remove(&emoji_id);
+                        };
+                    }
                 }
-            });
+            } else if let Some(handle) = &station.read().message_handlers {
+                (handle.on_message_react)(channel_id, id, emoji_id, user_id)
+            }
         }
         EventV1::MessageRemoveReaction {
             id,
             channel_id,
             emoji_id,
         } => {
-            update_message(&id, &channel_id, station, |message| {
-                message.reactions.remove(&emoji_id);
-            });
+            if let Some(channel_state) = station
+                .write_channel(AppChannel::ChannelStates)
+                .channel_states
+                .get_mut(&channel_id)
+            {
+                if let Some(message) = channel_state.messages.iter_mut().find(|m| m.id == id) {
+                    message.reactions.remove(&emoji_id);
+                }
+            } else if let Some(handle) = &station.read().message_handlers {
+                (handle.on_message_remove_reaction)(channel_id, id, emoji_id)
+            }
         }
         EventV1::ChannelCreate(channel) => {
             insert_channel(channel, station);
@@ -643,19 +705,25 @@ pub fn update_state(
         } => {
             ack_message(&id, message_id, station);
         }
-        // EventV1::MessageAppend {
-        //     id,
-        //     channel: _,
-        //     append,
-        // } => {
-        //     if let Some(message) = context.cache.update_message_with(&id, |message| {
-        //         if let Some(embeds) = append.embeds.clone() {
-        //             message.embeds.get_or_insert_default().extend(embeds);
-        //         }
-
-        //         message.clone()
-        //     }) {}
-        // }
+        EventV1::MessageAppend {
+            id,
+            channel,
+            append,
+        } => {
+            if let Some(channel_state) = station
+                .write_channel(AppChannel::ChannelStates)
+                .channel_states
+                .get_mut(&channel)
+            {
+                if let Some(message) = channel_state.messages.iter_mut().find(|m| m.id == id) {
+                    if let Some(embeds) = append.embeds.clone() {
+                        message.embeds.get_or_insert_default().extend(embeds);
+                    }
+                }
+            } else if let Some(handle) = &station.read().message_handlers {
+                (handle.on_message_append)(channel, id, append)
+            }
+        }
         // EventV1::ChannelStartTyping { id, user } => {
         //     context
         //         .notifiers

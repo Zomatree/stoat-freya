@@ -1,8 +1,12 @@
 # Stoat Freya Client
 
-_WIP Name - Not final._
+## _Very Early Alpha - Please do not use yet_
 
-A Stoat.chat client built on the Freya UI Framework.
+## _WIP Name - Not final._
+
+> ### This project has no affiliation with the official Stoat project or Revolt Platforms LTD.
+
+Unofficial Stoat.chat client built on the Freya UI Framework.
 
 Also styled after Material 3 UI.
 

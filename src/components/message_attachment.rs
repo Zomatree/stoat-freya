@@ -5,7 +5,7 @@ use crate::components::image;
 
 #[derive(PartialEq)]
 pub struct MessageAttachment {
-    pub file: Readable<v0::File>,
+    pub file: v0::File,
 }
 
 impl Component for MessageAttachment {
@@ -13,8 +13,13 @@ impl Component for MessageAttachment {
         rect()
             .corner_radius(12.)
             .overflow(Overflow::Clip)
-            .child(match self.file.read().metadata {
-                v0::Metadata::Image { width, height } => {
+            .child(match self.file.metadata {
+                v0::Metadata::Image {
+                    width,
+                    height,
+                    ref thumbhash,
+                    ..
+                } => {
                     let new_width = width.min(420) as f32;
                     let new_height = (new_width / width as f32) * height as f32;
 
@@ -22,11 +27,23 @@ impl Component for MessageAttachment {
                         .width(Size::px(new_width))
                         .height(Size::px(new_height))
                         .child(
-                            image(&self.file.read())
+                            image(&self.file)
                                 .width(Size::Fill)
                                 .height(Size::Fill)
                                 .aspect_ratio(AspectRatio::Min)
-                                .image_cover(ImageCover::Fill),
+                                .image_cover(ImageCover::Fill)
+                                // .map(thumbhash.as_ref(), |this, thumbnail| {
+                                //     this.loading_placeholder(
+                                //         ImageViewer::new(ImageSource::Bytes(
+                                //             0,
+                                //             Bytes::copy_from_slice(thumbnail),
+                                //         ))
+                                //         .width(Size::Fill)
+                                //         .height(Size::Fill)
+                                //         .aspect_ratio(AspectRatio::Min)
+                                //         .image_cover(ImageCover::Fill),
+                                //     )
+                                // }),
                         )
                         .into_element()
                 }
@@ -44,14 +61,10 @@ impl Component for MessageAttachment {
                     .child(
                         rect()
                             .spacing(8.)
+                            .child(label().text(self.file.filename.clone()).font_size(14))
                             .child(
                                 label()
-                                    .text(self.file.read().filename.clone())
-                                    .font_size(14),
-                            )
-                            .child(
-                                label()
-                                    .text(format!("{} KB", self.file.read().size / 1000))
+                                    .text(format!("{} KB", self.file.size / 1000))
                                     .font_size(11),
                             ),
                     )
@@ -60,6 +73,6 @@ impl Component for MessageAttachment {
     }
 
     fn render_key(&self) -> DiffKey {
-        (&self.file.peek().id).into()
+        (&self.file.id).into()
     }
 }

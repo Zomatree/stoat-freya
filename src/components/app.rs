@@ -20,7 +20,7 @@ pub struct App {}
 
 impl Component for App {
     fn render(&self) -> impl IntoElement {
-        let station = use_init_radio_station::<AppState, AppChannel>(AppState::default);
+        let station = use_init_radio_station::<AppState, AppChannel>(AppState::new);
         let config = use_config();
 
         let (_msg_s, msg_r) = use_hook(|| {

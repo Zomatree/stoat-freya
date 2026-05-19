@@ -15,7 +15,7 @@ impl Component for TrailingMessage {
             .horizontal()
             .spacing(8.)
             .child(rect().width(Size::px(54.)).horizontal().center().map(
-                self.message.message.read().edited.as_ref(),
+                self.message.message.edited.as_ref(),
                 |this, _ts| {
                     this.child(
                         label()

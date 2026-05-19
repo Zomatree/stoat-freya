@@ -27,7 +27,6 @@ impl Component for MessageReactions {
             .children(
                 self.message
                     .message
-                    .read()
                     .reactions
                     .clone()
                     .into_iter()
@@ -50,7 +49,7 @@ impl Component for MessageReactions {
 
                                 spawn(async move {
                                     let channel_id = channel.read().id().to_string();
-                                    let message_id = message.message.read().id.clone();
+                                    let message_id = message.message.id.clone();
                                     let reacted = users.contains(&*user_id.read());
 
                                     if reacted {
@@ -103,7 +102,7 @@ impl Component for MessageReactions {
                                         .into_element()
                                 }
                             })
-                            .child(label().text(users.len().to_string()).font_size(14))
+                            .child(label().text(users.len().to_string()).font_size(14).line_height(1.5))
                               )      .into_element()
                     }),
             )

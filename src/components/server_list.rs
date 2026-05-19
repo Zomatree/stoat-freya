@@ -93,23 +93,24 @@ impl Component for ServerList {
                 ScrollView::new()
                     .child(
                         rect()
-                            .padding((8., 0., 8., 0.))
+                            // .padding((8., 0.))
                             .width(Size::fill())
                             .cross_align(Alignment::Center)
-                            .spacing(8.)
+                            // .spacing(8.)
                             .child(HomeButton {})
                             .child(CurrentUserButton {})
                             .child(
                                 rect()
                                     .height(Size::px(1.))
                                     .width(Size::px(32.))
+                                    .margin((6., 0.))
                                     .background(0xff45464f),
                             )
                             .child(
                                 rect()
                                     .width(Size::fill())
                                     .cross_align(Alignment::Center)
-                                    .spacing(8.)
+                                    // .spacing(8.)
                                     .children(
                                         ordered_servers.read().iter().cloned().map(|server| {
                                             ServerListButton { server }.into_element()

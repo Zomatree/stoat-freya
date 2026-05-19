@@ -9,6 +9,8 @@ hotreload = ["freya/hotreload"]
 [patch.crates-io]
 # freya = { path = "../freya/crates/freya" }
 # freya-components = { path = "../freya/crates/freya-components" }
+freya = { git = "https://github.com/marc2332/freya", rev = "f180384" }
+freya-components = { git = "https://github.com/marc2332/freya", rev = "f180384" }
 
 [dependencies]
 freya = { version = "0.4.0-rc.19", features = ["devtools", "radio", "remote-asset", "icons", "webview", "markdown"] }
@@ -21,7 +23,7 @@ serde_json = "1.0"
 futures = "0.3"
 log = "0.4"
 pretty_env_logger = "0.5.0"
-tokio = { version = "1.52.1", features = ["rt"] }
+tokio = { version = "1.52.1", features = ["rt", "rt-multi-thread"] }
 bytes = "1.11.0"
 scc = "3.4.8"
 indexmap = "*"
@@ -34,8 +36,11 @@ euclid = "0.22.14"
 jiff = "*"
 blocking = "*"
 ureq = "3.1.4"
+regex = "1.12.3"
+chumsky = { version = "*", features = [] }
+itertools = { version = "*" }
 
-stoat-models = { package = "revolt-models", version = "0.9.4", default-features = false, features = ["serde", "partials"] }
-stoat-database = { package = "revolt-database", version = "0.9.4", default-features = false, features = ["async-std-runtime"] }
-stoat-permissions = { package = "revolt-permissions", version = "0.9.4" }
-stoat-result = { package = "revolt-result", default-features = false, features = ["serde"], version = "0.9.4" }
+stoat-models = { package = "revolt-models", version = "0.13.6", default-features = false, features = ["serde", "partials"] }
+stoat-permissions = { package = "revolt-permissions", version = "0.13.6" }
+stoat-result = { package = "revolt-result", default-features = false, features = ["serde"], version = "0.13.6" }
+stoat-config = { package = "revolt-config", default-features = false, version = "0.13.6" }

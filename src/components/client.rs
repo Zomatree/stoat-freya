@@ -5,7 +5,7 @@ use tokio::time::sleep;
 
 use crate::{
     AppChannel, ConnectionState, Selection,
-    components::{Discover, Home, Server, ServerList, Settings, UserProfile},
+    components::{Discover, FloatingManager, Home, Server, ServerList, Settings, UserProfile},
 };
 
 #[derive(PartialEq)]
@@ -50,6 +50,7 @@ impl Component for Client {
 
         rect()
             .color(0xffe3e1e9)
+            .child(FloatingManager {})
             .child(
                 rect()
                     .direction(Direction::Horizontal)

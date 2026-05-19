@@ -19,7 +19,6 @@ impl Component for MessageReplyPreview {
 
         let has_attachments = message
             .message
-            .read()
             .attachments
             .as_ref()
             .is_some_and(|files| !files.is_empty());
@@ -47,28 +46,40 @@ impl Component for MessageReplyPreview {
                         message.member.clone(),
                         14.,
                     ))
-                    .child(message.user.read().username.clone())
-                    .maybe_child(
-                        has_attachments
-                            .then(|| svg(file_text()).width(Size::px(16.)).height(Size::px(16.))),
-                    )
+                    .child({
+                        let user = message.user.read();
+
+                        user.display_name.clone().unwrap_or(user.username.clone())
+                    })
                     .child(
-                        if let Some(content) = message.message.read().content.clone()
-                            && !content.is_empty()
-                        {
-                            label()
-                                .text(content)
-                                .max_lines(1)
-                                .text_overflow(TextOverflow::Ellipsis)
-                                .into_element()
-                        } else if has_attachments {
-                            label()
-                                .font_slant(FontSlant::Italic)
-                                .text("Sent an attachment")
-                                .into_element()
-                        } else {
-                            rect().into_element()
-                        },
+                        rect()
+                            .height(Size::px(22.))
+                            .horizontal()
+                            .spacing(8.)
+                            .cross_align(Alignment::Center)
+                            .maybe_child(has_attachments.then(|| {
+                                rect()
+                                    .height(Size::px(22.))
+                                    .horizontal()
+                                    .spacing(4.)
+                                    .cross_align(Alignment::Center)
+                                    .child(
+                                        svg(file_text()).width(Size::px(16.)).height(Size::px(16.)),
+                                    )
+                                    .child(
+                                        label()
+                                            .font_size(14.)
+                                            .text("Sent an attachment")
+                                            .font_slant(FontSlant::Italic),
+                                    )
+                            }))
+                            .child(
+                                label()
+                                    .text(message.message.content.clone().unwrap_or_default())
+                                    .max_lines(1)
+                                    .text_overflow(TextOverflow::Ellipsis)
+                                    .into_element(),
+                            ),
                     ),
             )
             .child(
@@ -90,15 +101,11 @@ impl Component for MessageReplyPreview {
                                     .child(
                                         svg(at_sign()).width(Size::px(16.)).height(Size::px(16.)),
                                     )
-                                    .child(if mention {
-                                        "ON"
-                                    } else {
-                                        "OFF"
-                                    }),
+                                    .child(if mention { "ON" } else { "OFF" }),
                             )
                             .on_press({
                                 let mut replies = self.replies.clone();
-                                let message_id = message.message.peek().id.clone();
+                                let message_id = message.message.id.clone();
 
                                 move |_| {
                                     replies.toggle_mention(&message_id);
@@ -115,7 +122,7 @@ impl Component for MessageReplyPreview {
                             )
                             .on_press({
                                 let mut replies = self.replies.clone();
-                                let message_id = message.message.peek().id.clone();
+                                let message_id = message.message.id.clone();
 
                                 move |_| {
                                     replies.remove_reply(&message_id);

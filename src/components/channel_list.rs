@@ -16,22 +16,39 @@ impl Component for ChannelList {
     fn render(&self) -> impl IntoElement {
         let radio = use_radio(AppChannel::Channels);
 
-        let categories = self.server.read().categories.clone().unwrap_or_default();
+        let non_category_channels = use_memo({
+            let server = self.server.clone();
 
-        let category_channels = categories
-            .iter()
-            .filter(|c| c.id != "default")
-            .flat_map(|cat| cat.channels.clone())
-            .collect::<Vec<_>>();
+            move || {
+                let server = server.read();
+                let categories = server.categories.clone().unwrap_or_default();
 
-        let non_category_channels = self
-            .server
-            .read()
-            .channels
-            .iter()
-            .filter(|&channel_id| !category_channels.contains(channel_id))
-            .cloned()
-            .collect::<Vec<_>>();
+                let category_channels = categories
+                    .iter()
+                    .filter(|c| c.id != "default")
+                    .flat_map(|cat| cat.channels.clone())
+                    .collect::<Vec<_>>();
+
+                let mut non_category_channels = server
+                    .channels
+                    .iter()
+                    .filter(|&channel_id| !category_channels.contains(channel_id))
+                    .cloned()
+                    .collect::<Vec<_>>();
+
+                if let Some(default_cat) = categories.iter().find(|c| c.id == "default") {
+                    non_category_channels.sort_by_key(|id| {
+                        default_cat
+                            .channels
+                            .iter()
+                            .position(|c| c == id)
+                            .unwrap_or(usize::MAX)
+                    });
+                };
+
+                non_category_channels
+            }
+        });
 
         ScrollView::new().child(
             rect()
@@ -41,7 +58,9 @@ impl Component for ChannelList {
                 .child(
                     rect().padding((4., 0.)).children(
                         non_category_channels
-                            .into_iter()
+                            .read()
+                            .iter()
+                            .cloned()
                             .filter(|channel_id| radio.read().channels.contains_key(channel_id))
                             .map(|channel_id: String| {
                                 let channel = radio.slice_current(move |state| {
@@ -57,8 +76,7 @@ impl Component for ChannelList {
                 )
                 .child(
                     rect().padding((4., 0.)).spacing(8.).children(
-                        categories
-                            .into_iter()
+                            self.server.read().categories.iter().flatten()
                             .filter(|cat| !cat.channels.is_empty() && cat.id != "default")
                             .map(|cat| {
                                 let server = self.server.clone();

@@ -29,10 +29,14 @@ impl Component for CurrentUserButton {
 
         rect()
             .horizontal()
+            .width(Size::px(56.))
+            .height(Size::px(56.))
             .child(
                 Button::new()
                     .flat()
                     .padding(0.)
+                    .width(Size::px(56.))
+                    .height(Size::px(56.))
                     .child(Avatar::new(current_user.clone().into_readable(), None, 42.).presence(true))
                     .on_press(move |_| show_popup.toggle()),
             )
@@ -132,8 +136,6 @@ impl Component for CurrentUserButton {
                             .child(seperator()),
                     )
             }))
-            .width(Size::px(42.))
-            .height(Size::px(42.))
     }
 }
 

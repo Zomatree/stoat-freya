@@ -1,19 +1,17 @@
 use futures::{FutureExt, SinkExt, StreamExt, future::select};
 use std::{sync::Arc, time::Duration};
-use stoat_database::events::{
-    client::{EventV1, Ping},
-    server::ClientMessage,
-};
 use tokio::{
     sync::{
         Mutex,
         mpsc::{UnboundedReceiver, UnboundedSender},
-    }, task::AbortHandle, time::sleep
+    },
+    task::AbortHandle,
+    time::sleep,
 };
 use tokio_tungstenite::connect_async_with_config;
 use tungstenite::{Message, protocol::WebSocketConfig};
 
-use crate::{error::Error, http};
+use crate::{error::Error, http, types::{EventV1, Ping, ClientMessage}};
 
 #[derive(Debug, Clone)]
 pub enum LocalEvent {
@@ -26,7 +24,7 @@ pub enum LocalEvent {
 #[derive(Debug, Clone)]
 pub enum Event {
     Stoat(EventV1),
-    Local(LocalEvent)
+    Local(LocalEvent),
 }
 
 async fn send(
@@ -86,9 +84,7 @@ pub async fn run(
                     Message::Text(data) => {
                         serde_json::from_str(data.as_str()).map_err(|e| e.to_string())
                     }
-                    Message::Close(_) => {
-                        return Err(Error::ClosedWs)
-                    },
+                    Message::Close(_) => return Err(Error::ClosedWs),
                     msg => {
                         if let Ok(text) = msg.to_text() {
                             log::error!("Unexpected WS message: {text:?}");
@@ -104,33 +100,41 @@ pub async fn run(
                         log::debug!("Received event {event:?}");
 
                         if let EventV1::Authenticated = &event {
-                            task = Some(tokio::spawn({
-                                let ws = ws_send.clone();
-                                let mut i = 0;
+                            task = Some(
+                                tokio::spawn({
+                                    let ws = ws_send.clone();
+                                    let mut i = 0;
 
-                                async move {
-                                    loop {
-                                        // sleep(Duration::from_secs(5)).await;
-                                        // ws.lock().await.close().await;
+                                    async move {
+                                        loop {
+                                            // sleep(Duration::from_secs(5)).await;
+                                            // ws.lock().await.close().await;
 
-                                        send(
-                                            &ws,
-                                            &ClientMessage::Ping {
-                                                data: Ping::Number(i),
-                                                responded: None,
-                                            },
-                                        )
-                                        .await
-                                        .unwrap();
-                                        i = i.wrapping_add(1);
+                                            if send(
+                                                &ws,
+                                                &ClientMessage::Ping {
+                                                    data: Ping::Number(i),
+                                                },
+                                            )
+                                            .await
+                                            .is_err()
+                                            {
+                                                return;
+                                            };
 
-                                        sleep(Duration::from_secs(30)).await;
+                                            i = i.wrapping_add(1);
+
+                                            sleep(Duration::from_secs(30)).await;
+                                        }
                                     }
-                                }
-                            }).abort_handle());
+                                })
+                                .abort_handle(),
+                            );
                         };
 
-                        events.send(Event::Stoat(event)).map_err(|_| Error::InternalError)?;
+                        events
+                            .send(Event::Stoat(event))
+                            .map_err(|_| Error::InternalError)?;
                     }
                     Err(e) => {
                         log::error!("Failed to deserialise event: {e:?}");
