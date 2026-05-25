@@ -4,7 +4,10 @@ use freya::{
 };
 use stoat_models::v0;
 
-use crate::components::{Avatar, ReplyController, ReplyIntent, StoatButton};
+use crate::{
+    components::{Avatar, ReplyController, ReplyIntent, StoatButton},
+    use_material_theme,
+};
 
 #[derive(PartialEq)]
 pub struct MessageReplyPreview {
@@ -16,6 +19,7 @@ pub struct MessageReplyPreview {
 impl Component for MessageReplyPreview {
     fn render(&self) -> impl IntoElement {
         let message = self.reply.read().message.clone();
+        let theme = use_material_theme();
 
         let has_attachments = message
             .message
@@ -24,7 +28,8 @@ impl Component for MessageReplyPreview {
             .is_some_and(|files| !files.is_empty());
 
         rect()
-            .background(0xff384379)
+            .background(theme.md.primary_container.as_argb_u32())
+            .color(theme.md.on_primary_container.as_argb_u32())
             .corner_radius(16.)
             .overflow(Overflow::Clip)
             .width(Size::func(|size| Some(size.parent - 16.)))
@@ -97,7 +102,14 @@ impl Component for MessageReplyPreview {
                                     .spacing(4.)
                                     .horizontal()
                                     .cross_align(Alignment::Center)
-                                    .color(if mention { 0xffdde1ff } else { 0xff90909a })
+                                    .color(
+                                        if mention {
+                                            theme.md.on_primary_container
+                                        } else {
+                                            theme.md.outline
+                                        }
+                                        .as_argb_u32(),
+                                    )
                                     .child(
                                         svg(at_sign()).width(Size::px(16.)).height(Size::px(16.)),
                                     )
@@ -116,7 +128,7 @@ impl Component for MessageReplyPreview {
                         StoatButton::new()
                             .child(
                                 svg(circle_x())
-                                    .color(0xffdde1ff)
+                                    .color(theme.md.on_primary_container.as_argb_u32())
                                     .width(Size::px(16.))
                                     .height(Size::px(16.)),
                             )

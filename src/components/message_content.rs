@@ -4,7 +4,6 @@ use stoat_models::v0;
 use crate::{
     AppChannel,
     components::{MessageAttachment, MessageEdit, MessageModel, MessageReactions},
-    map_readable,
 };
 
 #[derive(PartialEq)]

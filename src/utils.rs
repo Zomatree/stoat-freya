@@ -1,6 +1,7 @@
-use std::{cell::Ref, rc::Rc, time::SystemTime};
+use std::{cell::Ref, rc::Rc, sync::{Arc, LazyLock}, time::SystemTime};
 
 use freya::{prelude::*, radio::Readable};
+use indexmap::IndexMap;
 use stoat_models::v0;
 
 use crate::{ChannelUnread, NotificationBadge, NotificationsSettings, color::parse_fill};
@@ -185,6 +186,14 @@ pub fn get_unread_badge(channel: &v0::Channel, unread: &ChannelUnread) -> Option
             None
         }
     }
+}
+
+static UNICODE_EMOJIS: LazyLock<Arc<IndexMap<String, String>>> = LazyLock::new(|| {
+    Arc::new(serde_json::from_str(include_str!("./assets/emojiMapping.json")).unwrap())
+});
+
+pub fn get_unicode_emojis() -> Arc<IndexMap<String, String>> {
+    UNICODE_EMOJIS.clone()
 }
 
 // pub fn map_optional_readable<T, U>(

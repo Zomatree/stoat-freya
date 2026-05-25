@@ -7,10 +7,11 @@ use stoat_models::v0;
 use crate::{
     AppChannel,
     components::{
-        StoatButton, StoatButtonColorsThemePartialExt, StoatButtonLayoutThemePartialExt,
-        Avatar,
+        Avatar, StoatButton, StoatButtonLayoutThemePartialExt, StoatTooltip,
     },
     http,
+    theme::Theme,
+    use_material_theme,
 };
 
 #[derive(PartialEq)]
@@ -19,6 +20,7 @@ pub struct CurrentUserButton {}
 impl Component for CurrentUserButton {
     fn render(&self) -> impl IntoElement {
         let radio = use_radio(AppChannel::UserId);
+        let theme = use_material_theme();
 
         let current_user_id = radio.slice_current(|state| state.user_id.as_ref().unwrap());
         let current_user = radio.slice(AppChannel::Users, move |state| {
@@ -27,23 +29,44 @@ impl Component for CurrentUserButton {
         let mut area = use_state(Area::default);
         let mut show_popup = use_state(|| false);
 
+        let user = current_user.read();
+
         rect()
             .horizontal()
-            .width(Size::px(56.))
-            .height(Size::px(56.))
             .child(
-                Button::new()
-                    .flat()
-                    .padding(0.)
-                    .width(Size::px(56.))
-                    .height(Size::px(56.))
-                    .child(Avatar::new(current_user.clone().into_readable(), None, 42.).presence(true))
-                    .on_press(move |_| show_popup.toggle()),
+                StoatTooltip::new(rect().spacing(8.)
+                        .font_size(11.)
+                        .child(label().max_lines(1).text(user.username.clone()))
+                        .child(match user.status.as_ref().and_then(|s| s.presence.as_ref()) {
+                            Some(v0::Presence::Online) => "Online",
+                            Some(v0::Presence::Idle) => "Idle",
+                            Some(v0::Presence::Focus) => "Focus",
+                            Some(v0::Presence::Busy) => "Busy",
+                            Some(v0::Presence::Invisible) => "Invisible",
+                            None => "Offline",
+                        })
+                )
+                .position(AttachedPosition::Right)
+                .child(
+                    StoatButton::new()
+                        .corner_radius(56.)
+                        .child(
+                            rect()
+                                .width(Size::px(56.))
+                                .height(Size::px(56.))
+                                .center()
+                                .child(
+                                    Avatar::new(current_user.clone().into_readable(), None, 42.)
+                                        .presence(true),
+                                ),
+                        )
+                        .on_press(move |_| show_popup.toggle()),
+                ),
             )
             .maybe_child(show_popup.read().then(|| {
                 rect()
                     .layer(Layer::Overlay)
-                    .position(Position::new_absolute().left(56.))
+                    .position(Position::new_absolute().left(61.))
                     .width(Size::px(256.))
                     .corner_radius(4.)
                     .overflow(Overflow::Clip)
@@ -72,24 +95,25 @@ impl Component for CurrentUserButton {
                     })
                     .child(
                         rect()
-                            .background(0xff1f1f25)
-                            .color(0xffe3e1e9)
+                            .background(theme.md.surface_container.as_argb_u32())
                             .padding((8., 0.))
                             .child({
                                 let user = current_user.read();
 
-                                StoatButton::new().hover_background(0x14e3e1e9).child(
+                                StoatButton::new().child(
                                     rect()
                                         .padding((8., 15.))
-                                        .color(0xffe3e1e9)
+                                        // .color(0xffe3e1e9)
                                         .width(Size::Fill)
                                         .child(
                                             rect()
                                                 .horizontal()
                                                 .spacing(8.)
-                                                .child(
-                                                    Avatar::new(current_user.clone().into_readable(), None, 32.)
-                                                )
+                                                .child(Avatar::new(
+                                                    current_user.clone().into_readable(),
+                                                    None,
+                                                    32.,
+                                                ))
                                                 .child(
                                                     rect()
                                                         .child(
@@ -115,53 +139,38 @@ impl Component for CurrentUserButton {
                                         ),
                                 )
                             })
-                            .child(seperator())
-                            .child(presence_button(
-                                Color::GREEN,
-                                "Online",
-                                v0::Presence::Online,
-                            ))
-                            .child(presence_button(Color::YELLOW, "Idle", v0::Presence::Idle))
-                            .child(presence_button(Color::BLUE, "Focus", v0::Presence::Focus))
-                            .child(presence_button(
-                                Color::RED,
-                                "Do Not Disturb",
-                                v0::Presence::Busy,
-                            ))
-                            .child(presence_button(
-                                Color::GREY,
-                                "Invisible",
-                                v0::Presence::Invisible,
-                            ))
-                            .child(seperator()),
+                            .child(seperator(&theme))
+                            .child(presence_button(v0::Presence::Online, &theme))
+                            .child(presence_button(v0::Presence::Idle, &theme))
+                            .child(presence_button(v0::Presence::Focus, &theme))
+                            .child(presence_button(v0::Presence::Busy, &theme))
+                            .child(presence_button(v0::Presence::Invisible, &theme))
+                            .child(seperator(&theme)),
                     )
             }))
     }
 }
 
-fn seperator() -> Rect {
+fn seperator(theme: &Theme) -> Rect {
     rect()
         .margin((4., 0.))
         .width(Size::Fill)
         .height(Size::px(1.))
-        .background(0xff45464f)
+        .background(theme.md.outline_variant.as_argb_u32())
 }
 
-fn presence_button(
-    color: impl Into<Color>,
-    title: &'static str,
-    value: v0::Presence,
-) -> StoatButton {
-    StoatButton::new()
-        .padding((8., 16.))
-        .width(Size::Fill)
-        .hover_background(0x14e3e1e9)
-        .child(
-            rect()
-                .horizontal()
-                .cross_align(Alignment::Center)
-                .spacing(8.)
-                .on_press(move |_| {
+fn presence_button(value: v0::Presence, theme: &Theme) -> StoatButton {
+    StoatButton::new().width(Size::Fill).child(
+        rect()
+            .padding((8., 16.))
+            .horizontal()
+            .width(Size::Fill)
+            .cross_align(Alignment::Center)
+            .spacing(8.)
+            .on_press({
+                let value = value.clone();
+
+                move |_| {
                     let value = value.clone();
 
                     spawn(async move {
@@ -184,16 +193,29 @@ fn presence_button(
                             .await
                             .unwrap();
                     });
-                })
-                .child(
-                    rect()
-                        .width(Size::px(10.))
-                        .height(Size::px(10.))
-                        .corner_radius(10.)
-                        .overflow(Overflow::Clip)
-                        .background(color),
-                )
-                .child(title)
-                .font_size(14),
-        )
+                }
+            })
+            .child(
+                rect()
+                    .width(Size::px(10.))
+                    .height(Size::px(10.))
+                    .corner_radius(10.)
+                    .overflow(Overflow::Clip)
+                    .background(match &value {
+                        v0::Presence::Online => theme.stoat.presence_online,
+                        v0::Presence::Idle => theme.stoat.presence_idle,
+                        v0::Presence::Focus => theme.stoat.presence_focus,
+                        v0::Presence::Busy => theme.stoat.presence_busy,
+                        v0::Presence::Invisible => theme.stoat.presence_invisible,
+                    }),
+            )
+            .child(match value {
+                v0::Presence::Online => "Online",
+                v0::Presence::Idle => "Idle",
+                v0::Presence::Focus => "Focus",
+                v0::Presence::Busy => "Do Not Disturb",
+                v0::Presence::Invisible => "Invisble",
+            })
+            .font_size(14),
+    )
 }

@@ -2,6 +2,7 @@
 name = "stoat-freya"
 version = "0.1.0"
 edition = "2024"
+repository = "https://github.com/Zomatree/stoat-freya"
 
 [features]
 hotreload = ["freya/hotreload"]
@@ -13,7 +14,7 @@ freya = { git = "https://github.com/marc2332/freya", rev = "f180384" }
 freya-components = { git = "https://github.com/marc2332/freya", rev = "f180384" }
 
 [dependencies]
-freya = { version = "0.4.0-rc.19", features = ["devtools", "radio", "remote-asset", "icons", "webview", "markdown"] }
+freya = { version = "0.4.0-rc.19", features = ["devtools", "radio", "remote-asset", "icons", "webview", "markdown", "zoom-shortcuts"] }
 freya-components = { version = "0.4.0-rc.19", features = ["remote-asset", "gif"] }
 tokio-tungstenite = { version = "0.27", features = ["native-tls"] }
 tungstenite = { version = "0.27", features = ["native-tls"] }
@@ -26,7 +27,7 @@ pretty_env_logger = "0.5.0"
 tokio = { version = "1.52.1", features = ["rt", "rt-multi-thread"] }
 bytes = "1.11.0"
 scc = "3.4.8"
-indexmap = "*"
+indexmap = { version = "*", features = ["serde"] }
 rfd = { version = "0.17.2", features = [] }
 ulid = "1.2.1"
 rand = "0.10.1"
@@ -39,8 +40,14 @@ ureq = "3.1.4"
 regex = "1.12.3"
 chumsky = { version = "*", features = [] }
 itertools = { version = "*" }
+material-colors = { git = "https://github.com/Aiving/material-colors", rev = "3fe7f52" }
 
 stoat-models = { package = "revolt-models", version = "0.13.6", default-features = false, features = ["serde", "partials"] }
 stoat-permissions = { package = "revolt-permissions", version = "0.13.6" }
 stoat-result = { package = "revolt-result", default-features = false, features = ["serde"], version = "0.13.6" }
 stoat-config = { package = "revolt-config", default-features = false, version = "0.13.6" }
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"

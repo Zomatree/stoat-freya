@@ -1,7 +1,10 @@
 use freya::{icons::lucide::file_text, prelude::*};
 use stoat_models::v0;
 
-use crate::components::image;
+use crate::{
+    components::{StoatButton, image},
+    use_material_theme,
+};
 
 #[derive(PartialEq)]
 pub struct MessageAttachment {
@@ -10,6 +13,9 @@ pub struct MessageAttachment {
 
 impl Component for MessageAttachment {
     fn render(&self) -> impl IntoElement {
+        let theme = use_material_theme();
+        let mut spoilered = use_state(|| self.file.filename.starts_with("SPOILER_"));
+
         rect()
             .corner_radius(12.)
             .overflow(Overflow::Clip)
@@ -31,20 +37,58 @@ impl Component for MessageAttachment {
                                 .width(Size::Fill)
                                 .height(Size::Fill)
                                 .aspect_ratio(AspectRatio::Min)
-                                .image_cover(ImageCover::Fill)
-                                // .map(thumbhash.as_ref(), |this, thumbnail| {
-                                //     this.loading_placeholder(
-                                //         ImageViewer::new(ImageSource::Bytes(
-                                //             0,
-                                //             Bytes::copy_from_slice(thumbnail),
-                                //         ))
-                                //         .width(Size::Fill)
-                                //         .height(Size::Fill)
-                                //         .aspect_ratio(AspectRatio::Min)
-                                //         .image_cover(ImageCover::Fill),
-                                //     )
-                                // }),
+                                .image_cover(ImageCover::Fill), // .map(thumbhash.as_ref(), |this, thumbnail| {
+                                                                //     this.loading_placeholder(
+                                                                //         ImageViewer::new(ImageSource::Bytes(
+                                                                //             0,
+                                                                //             Bytes::copy_from_slice(thumbnail),
+                                                                //         ))
+                                                                //         .width(Size::Fill)
+                                                                //         .height(Size::Fill)
+                                                                //         .aspect_ratio(AspectRatio::Min)
+                                                                //         .image_cover(ImageCover::Fill),
+                                                                //     )
+                                                                // }),
                         )
+                        .maybe_child(spoilered.read().then(|| {
+                            rect()
+                                .width(Size::px(new_width))
+                                .height(Size::px(new_height))
+                                .position(Position::new_absolute())
+                                .layer(Layer::Relative(1))
+                                .child(
+                                    StoatButton::new()
+                                        .on_press(move |_| spoilered.set(false))
+                                        .child(
+                                            rect()
+                                                .width(Size::px(new_width))
+                                                .height(Size::px(new_height))
+                                                .blur(24.)
+                                                .background(0x33FFFFFF)
+                                                .center()
+                                                .child(
+                                                    rect()
+                                                        .background(
+                                                            theme.md.inverse_surface.as_argb_u32(),
+                                                        )
+                                                        .color(
+                                                            theme
+                                                                .md
+                                                                .inverse_on_surface
+                                                                .as_argb_u32(),
+                                                        )
+                                                        .corner_radius(16.)
+                                                        .padding(8.)
+                                                        .child(
+                                                            label()
+                                                                .font_weight(FontWeight::SEMI_BOLD)
+                                                                .line_height(1.25)
+                                                                .text("Click to show spoiler"),
+                                                        ),
+                                                ),
+                                        ),
+                                )
+                        }))
                         .into_element()
                 }
                 _ => rect()

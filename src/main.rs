@@ -6,19 +6,25 @@ pub mod components;
 pub mod config;
 pub mod error;
 pub mod http;
+pub mod material;
 pub mod state;
 pub mod types;
 pub mod utils;
 pub mod websocket;
+pub mod theme;
 
 pub use color::*;
 pub use config::*;
 pub use error::*;
 pub use http::*;
+pub use material::*;
 pub use state::*;
 pub use utils::*;
+pub use theme::*;
 
-use crate::components::{FloatingManager, StoatButtonColorsThemePreference, StoatButtonLayoutThemePreference};
+use crate::components::{
+    HttpProvider, MaterialThemeProvider, Root, StoatButtonColorsThemePreference, StoatButtonLayoutThemePreference
+};
 
 pub const BASE: &str = "https://api.stoat.chat";
 
@@ -38,7 +44,7 @@ fn app() -> impl IntoElement {
 
     use_init_theme(|| {
         let mut theme = dark_theme();
-        theme.colors.text_primary = 0xffe3e1e9.into();
+        // theme.colors.text_primary = 0xffe3e1e9.into();
 
         theme.set(
             "stoat_button",
@@ -47,7 +53,7 @@ fn app() -> impl IntoElement {
                 hover_background: Preference::Specific(Color::TRANSPARENT),
                 border_fill: Preference::Specific(Color::TRANSPARENT),
                 focus_border_fill: Preference::Specific(Color::TRANSPARENT),
-                color: Preference::Reference("text_primary"),
+                color: Preference::Specific(Color::TRANSPARENT),
             },
         );
 
@@ -65,33 +71,9 @@ fn app() -> impl IntoElement {
         theme
     });
 
-    let future = use_future(move || {
-        let config = config.clone();
-
-        async move {
-            let http = http::HttpClient::new(BASE.to_string(), config.read().token.clone())
-                .await
-                .unwrap();
-            HTTP.set(http).unwrap();
-        }
-    });
-
-    rect()
-        .font_family("Inter")
-        .background(0xff292a2f)
-        .color(0xffe3e1e9)
-        .width(Size::Fill)
-        .height(Size::Fill)
+    MaterialThemeProvider::new()
         .child(ContextMenuViewer::new())
-        .child(match *future.state() {
-            FutureState::Fulfilled(_) => components::Root {}.into_element(),
-            _ => rect()
-                .width(Size::Fill)
-                .height(Size::Fill)
-                .center()
-                .child(CircularLoader::new())
-                .into_element(),
-        })
+        .child(HttpProvider::new().child(Root {}))
 }
 
 fn main() {
@@ -112,7 +94,8 @@ fn main() {
                 WindowConfig::new(app)
                     .with_title("Stoat")
                     .with_app_id("chat.stoat.app")
-                    .with_size(1280., 720.),
+                    .with_size(1280., 720.)
+                    .with_decorations(true)
             )
             .with_plugin(WebViewPlugin::new()),
     );

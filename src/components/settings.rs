@@ -1,6 +1,5 @@
 use freya::{
     icons::lucide::{
-        bot_message_square, circle_user_round, message_square_diff, shield_check,
         square_arrow_right, x,
     },
     prelude::*,
@@ -10,9 +9,10 @@ use freya::{
 use crate::{
     AppChannel, SettingsPage,
     components::{
-        Avatar, StoatButton, StoatButtonColorsThemePartialExt, StoatButtonLayoutThemePartialExt,
+        AccountSettings, AppearanceSettings, Avatar, ProfileSettings, StoatButton, StoatButtonColorsThemePartialExt, StoatButtonLayoutThemePartialExt
     },
-    use_config,
+    theme::Theme,
+    use_config, use_material_theme,
 };
 
 #[derive(PartialEq)]
@@ -22,6 +22,7 @@ impl Component for Settings {
     fn render(&self) -> impl IntoElement {
         let radio = use_radio(AppChannel::SettingsPage);
         let current_page = radio.slice_mut_current(|state| &mut state.settings_page);
+        let theme = use_material_theme();
 
         let close_settings = {
             let current_page = current_page.clone();
@@ -38,7 +39,7 @@ impl Component for Settings {
         rect()
             .expanded()
             .center()
-            .background(0xBB000000)
+            .background(0x99000000)
             .on_press({
                 let close_settings = close_settings.clone();
                 move |_| close_settings()
@@ -57,22 +58,25 @@ impl Component for Settings {
                     .on_press(|e: Event<PressEventData>| e.stop_propagation())
                     .corner_radius(if !fullscreen { 16. } else { 0. })
                     .overflow(Overflow::Clip)
-                    .background(0xff34343a)
+                    .background(theme.md.surface_container_highest.as_argb_u32())
                     .horizontal()
-                    .width(Size::func(move |size| {
-                        if !fullscreen {
-                            Some((size.parent * 0.8).max(size.parent - 400.).min(size.parent))
-                        } else {
-                            Some(size.parent)
-                        }
-                    }))
-                    .height(Size::func(move |size| {
-                        if !fullscreen {
-                            Some((size.parent - 100.).max(300.).min(size.parent))
-                        } else {
-                            Some(size.parent)
-                        }
-                    }))
+                    // .width(Size::func(move |size| {
+                    //     if !fullscreen {
+                    //         Some((size.parent * 0.8).max(size.parent - 400.).min(size.parent))
+                    //     } else {
+                    //         Some(size.parent)
+                    //     }
+                    // }))
+                    .height(Size::func_data(
+                        move |size| {
+                            if !fullscreen {
+                                Some((size.parent - 100.).max(300.).min(size.parent))
+                            } else {
+                                Some(size.parent)
+                            }
+                        },
+                        &fullscreen,
+                    ))
                     .child(
                         ScrollView::new()
                             .height(Size::Fill)
@@ -84,14 +88,17 @@ impl Component for Settings {
                                     .child(MyAccountButton {})
                                     .child(settings_category(
                                         "USER SETTINGS",
+                                        &theme,
                                         &[SettingsPage::Profile, SettingsPage::Sessions],
                                     ))
                                     .child(settings_category(
                                         "STOAT",
+                                        &theme,
                                         &[SettingsPage::MyBots, SettingsPage::Feedback],
                                     ))
                                     .child(settings_category(
                                         "CLIENT SETTINGS",
+                                        &theme,
                                         &[
                                             SettingsPage::Voice,
                                             SettingsPage::Appearance,
@@ -100,6 +107,7 @@ impl Component for Settings {
                                     ))
                                     .child(settings_category(
                                         "MISC",
+                                        &theme,
                                         &[
                                             SettingsPage::SourceCode,
                                             SettingsPage::Advanced,
@@ -111,8 +119,6 @@ impl Component for Settings {
                     )
                     .child(
                         rect()
-                            .width(Size::Fill)
-                            .height(Size::Fill)
                             .corner_radius(CornerRadius {
                                 top_left: 16.,
                                 top_right: 0.,
@@ -120,58 +126,68 @@ impl Component for Settings {
                                 bottom_left: 16.,
                                 smoothing: 0.,
                             })
-                            .background(0xff1b1b21)
+                            .background(theme.md.surface_container_low.as_argb_u32())
                             .horizontal()
                             .content(Content::Flex)
-                            .child(ScrollView::new().width(Size::flex(1.)).child(
-                                rect().padding((32., 32.)).maybe_child(
-                                    current_page.read().clone().map(|page| {
-                                        rect()
-                                            .spacing(8.)
-                                            .child(label().text(page.title()).font_size(22))
-                                            .child(match page {
-                                                SettingsPage::Account => {
-                                                    "Coming soon!".into_element()
-                                                }
-                                                SettingsPage::Profile => {
-                                                    "Coming soon!".into_element()
-                                                }
-                                                SettingsPage::Sessions => {
-                                                    "Coming soon!".into_element()
-                                                }
-                                                SettingsPage::MyBots => {
-                                                    "Coming soon!".into_element()
-                                                }
-                                                SettingsPage::Feedback => {
-                                                    "Coming soon!".into_element()
-                                                }
-                                                SettingsPage::Voice => {
-                                                    "Coming soon!".into_element()
-                                                }
-                                                SettingsPage::Appearance => {
-                                                    "Coming soon!".into_element()
-                                                }
-                                                SettingsPage::Language => {
-                                                    "Coming soon!".into_element()
-                                                }
-                                                SettingsPage::SourceCode => {
-                                                    "Coming soon!".into_element()
-                                                }
-                                                SettingsPage::Advanced => {
-                                                    "Coming soon!".into_element()
-                                                }
-                                                SettingsPage::Donate => {
-                                                    "Coming soon!".into_element()
-                                                }
-                                            })
-                                    }),
-                                ),
-                            ))
+                            .child(
+                                ScrollView::new()
+                                    .width(Size::flex(1.))
+                                    .max_width(Size::px(740.))
+                                    .child(rect().padding((32., 32.)).maybe_child(
+                                        current_page.read().clone().map(|page| {
+                                            rect()
+                                                .spacing(8.)
+                                                .child(
+                                                    label()
+                                                        .text(page.title())
+                                                        .font_size(22)
+                                                        .line_height(1.75)
+                                                        .font_weight(550),
+                                                )
+                                                .child(match page {
+                                                    SettingsPage::Account => {
+                                                        AccountSettings {}.into_element()
+                                                    }
+                                                    SettingsPage::Profile => {
+                                                        ProfileSettings {}.into_element()
+                                                    }
+                                                    SettingsPage::Sessions => {
+                                                        "Coming soon!".into_element()
+                                                    }
+                                                    SettingsPage::MyBots => {
+                                                        "Coming soon!".into_element()
+                                                    }
+                                                    SettingsPage::Feedback => {
+                                                        "Coming soon!".into_element()
+                                                    }
+                                                    SettingsPage::Voice => {
+                                                        "Coming soon!".into_element()
+                                                    }
+                                                    SettingsPage::Appearance => {
+                                                        AppearanceSettings {}.into_element()
+                                                    }
+                                                    SettingsPage::Language => {
+                                                        "Coming soon!".into_element()
+                                                    }
+                                                    SettingsPage::SourceCode => {
+                                                        "Coming soon!".into_element()
+                                                    }
+                                                    SettingsPage::Advanced => {
+                                                        "Coming soon!".into_element()
+                                                    }
+                                                    SettingsPage::Donate => {
+                                                        "Coming soon!".into_element()
+                                                    }
+                                                })
+                                        }),
+                                    )),
+                            )
                             .child(
                                 rect().padding((32., 32.)).child(
                                     StoatButton::new()
                                         .corner_radius(40.)
-                                        .background(0xff424659)
+                                        .background(theme.md.secondary_container.as_argb_u32())
+                                        .color(theme.md.on_secondary_container.as_argb_u32())
                                         .on_press(move |_| close_settings())
                                         .child(
                                             rect()
@@ -197,6 +213,7 @@ struct MyAccountButton {}
 impl Component for MyAccountButton {
     fn render(&self) -> impl IntoElement {
         let radio = use_radio(AppChannel::UserId);
+        let theme = use_material_theme();
 
         let current_page =
             radio.slice_mut(AppChannel::SettingsPage, |state| &mut state.settings_page);
@@ -208,19 +225,18 @@ impl Component for MyAccountButton {
             .into_readable();
 
         StoatButton::new()
-            .width(Size::fill())
-            .padding((6., 8.))
             .margin((0., 0., 6., 0.))
             .corner_radius(8.)
-            .hover_background(0x14e3e1e9)
             .maybe(
                 *current_page.read() == Some(SettingsPage::Account),
-                |this| this.background(0xff384379).hover_background(0xff4A558B),
+                |this| this.background(theme.md.primary_container.as_argb_u32()),
             )
             .child(
                 rect()
                     .horizontal()
+                    .width(Size::Fill)
                     .spacing(8.)
+                    .padding((6., 8.))
                     .cross_align(Alignment::Center)
                     .child(Avatar::new(current_user.clone(), None, 32.))
                     .child(
@@ -249,18 +265,18 @@ impl Component for SettingsButton {
     fn render(&self) -> impl IntoElement {
         let radio = use_radio(AppChannel::SettingsPage);
         let current_page = radio.slice_mut_current(|state| &mut state.settings_page);
+        let theme = use_material_theme();
 
         StoatButton::new()
-            .width(Size::fill())
-            .padding((6., 8.))
             .corner_radius(8.)
-            .hover_background(0x14e3e1e9)
             .maybe(*current_page.read() == Some(self.page), |this| {
-                this.background(0xff384379).hover_background(0xff4A558B)
+                this.background(theme.md.primary_container.as_argb_u32())
             })
             .child(
                 rect()
                     .horizontal()
+                    .width(Size::Fill)
+                    .padding((6., 8.))
                     .spacing(8.)
                     .cross_align(Alignment::Center)
                     .child(
@@ -283,13 +299,13 @@ impl Component for SettingsButton {
     }
 }
 
-fn settings_category(title: &'static str, pages: &[SettingsPage]) -> Rect {
+fn settings_category(title: &'static str, theme: &Theme, pages: &[SettingsPage]) -> Rect {
     rect()
         .spacing(8.)
         .child(
             label()
                 .text(title)
-                .color(0xff90909a)
+                .color(theme.md.outline.as_argb_u32())
                 .font_size(12)
                 .font_weight(FontWeight::BOLD)
                 .margin((0., 8.)),
@@ -309,15 +325,15 @@ struct LogoutButton {}
 impl Component for LogoutButton {
     fn render(&self) -> impl IntoElement {
         let mut config = use_config();
+        let theme = use_material_theme();
 
         StoatButton::new()
-            .width(Size::fill())
-            .padding((6., 8.))
             .corner_radius(8.)
-            .color(0xffffb4ab)
-            .hover_background(0x14e3e1e9)
+            .color(theme.md.error.as_argb_u32())
             .child(
                 rect()
+                    .padding((6., 8.))
+                    .width(Size::Fill)
                     .horizontal()
                     .spacing(8.)
                     .cross_align(Alignment::Center)

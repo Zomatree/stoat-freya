@@ -1,9 +1,15 @@
 use freya::{
-    icons::lucide::{bell, chevron_left, circle_slash, hand, inbox, plus, users_round},
+    icons::lucide::{bell, circle_slash, hand, inbox, plus, users_round},
     prelude::*,
 };
 
-use crate::components::FriendsList;
+use crate::{
+    components::{
+        FriendsList, HideSidebarHeader, StoatButton, StoatButtonColorsThemePartialExt,
+        StoatButtonLayoutThemePartialExt, StoatTooltip,
+    },
+    use_material_theme,
+};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Default)]
 pub enum FriendPage {
@@ -20,65 +26,70 @@ pub struct Friends {}
 impl Component for Friends {
     fn render(&self) -> impl IntoElement {
         let mut page = use_state(FriendPage::default);
+        let theme = use_material_theme();
 
         rect()
             .child(
                 rect()
                     .horizontal()
                     .height(Size::px(48.))
-                    .padding((0., 16.))
+                    .padding((0., 8.))
                     .spacing(10.)
                     .margin((8., 8., 8., 0.))
                     .cross_align(Alignment::Center)
-                    .child(
-                        rect()
-                            .cross_align(Alignment::Center)
-                            .horizontal()
-                            .child(
-                                svg(chevron_left())
-                                    .width(Size::px(20.))
-                                    .height(Size::px(20.)),
-                            )
-                            .child(
-                                svg(users_round())
-                                    .width(Size::px(24.))
-                                    .height(Size::px(24.)),
-                            ),
-                    )
+                    .child(HideSidebarHeader {
+                        icon: users_round(),
+                    })
                     .child(label().text("Friends").font_size(16)),
             )
             .child(
                 rect().horizontal().child(
                     rect()
                         .margin((0., 8., 8., 8.))
+                        .padding((0., 8.))
                         .width(Size::Fill)
                         .height(Size::Fill)
                         .corner_radius(28.)
-                        .background(0xff0d0e13)
+                        .background(theme.md.surface_container_lowest.as_argb_u32())
                         .overflow(Overflow::Clip)
                         .child(
                             rect()
-                                .padding((0., 8.))
                                 .horizontal()
                                 .child(
                                     rect()
-                                        // .padding((14., 0.))
+                                        .padding((8., 0.))
                                         .width(Size::px(56.))
                                         .cross_align(Alignment::Center)
                                         .child(
-                                            rect()
-                                                .margin((12., 0.))
-                                                .background(0xffb9c3ff)
-                                                .corner_radius(12.)
-                                                .width(Size::px(40.))
-                                                .height(Size::px(40.))
-                                                .center()
-                                                .child(
-                                                    svg(plus())
-                                                        .width(Size::px(24.))
-                                                        .height(Size::px(24.))
-                                                        .color(0xff202c61),
-                                                ),
+                                            StoatTooltip::new(
+                                                label()
+                                                    .max_lines(1)
+                                                    .font_size(11.)
+                                                    .text("Add a new friend"),
+                                            )
+                                            .position(AttachedPosition::Right)
+                                            .child(
+                                                StoatButton::new()
+                                                    .margin((6., 0., 12., 0.))
+                                                    .corner_radius(12.)
+                                                    .child(
+                                                        rect()
+                                                            .width(Size::px(40.))
+                                                            .height(Size::px(40.))
+                                                            .background(
+                                                                theme.md.primary.as_argb_u32(),
+                                                            )
+                                                            .color(
+                                                                theme.md.on_primary.as_argb_u32(),
+                                                            )
+                                                            .center()
+                                                            .child(
+                                                                svg(plus())
+                                                                    .width(Size::px(24.))
+                                                                    .height(Size::px(24.)),
+                                                            ),
+                                                    ),
+                                            ),
                                         )
                                         .children(
                                             [
@@ -90,35 +101,48 @@ impl Component for Friends {
                                             .into_iter()
                                             .map(
                                                 |(icon, title, value)| {
-                                                    rect()
-                                                        .width(Size::px(56.))
-                                                        .cross_align(Alignment::Center)
+                                                    StoatButton::new()
+                                                        .corner_radius(16.)
+                                                        .maybe(*page.read() == value, |this| {
+                                                            this.background(
+                                                                theme
+                                                                    .md
+                                                                    .secondary_container
+                                                                    .as_argb_u32(),
+                                                            )
+                                                        })
                                                         .on_press(move |_| {
                                                             page.set_if_modified(value)
                                                         })
                                                         .child(
                                                             rect()
-                                                                .width(Size::px(56.))
-                                                                .height(Size::px(32.))
-                                                                .corner_radius(56.)
-                                                                .maybe(
-                                                                    *page.read() == value,
-                                                                    |this| {
-                                                                        this.background(0xff424659)
-                                                                    },
-                                                                )
-                                                                .center()
+                                                                .cross_align(Alignment::Center)
                                                                 .child(
-                                                                    svg(icon)
-                                                                        .width(Size::px(24.))
-                                                                        .height(Size::px(24.)),
+                                                                    rect()
+                                                                        .center()
+                                                                        .width(Size::px(56.))
+                                                                        .height(Size::px(32.))
+                                                                        .child(
+                                                                            svg(icon)
+                                                                                .width(Size::px(
+                                                                                    24.,
+                                                                                ))
+                                                                                .height(Size::px(
+                                                                                    24.,
+                                                                                )),
+                                                                        ),
+                                                                )
+                                                                .child(
+                                                                    rect()
+                                                                        .width(Size::px(56.))
+                                                                        .height(Size::px(24.))
+                                                                        .center()
+                                                                        .child(
+                                                                            label()
+                                                                                .text(title)
+                                                                                .font_size(12),
+                                                                        ),
                                                                 ),
-                                                        )
-                                                        .child(
-                                                            label()
-                                                                .text(title)
-                                                                .font_size(12)
-                                                                .margin((4., 0.)),
                                                         )
                                                         .into_element()
                                                 },

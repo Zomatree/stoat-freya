@@ -1,14 +1,12 @@
-use std::rc::Rc;
-
-use freya::{icons::lucide::ellipsis_vertical, prelude::*, radio::use_radio};
+use freya::{prelude::*, radio::use_radio};
 use stoat_models::v0;
 
 use crate::{
     AppChannel,
     components::{
-        Avatar, ProfileBadges, ProfileBanner, ProfileBio, ProfileButtons, ProfileJoined, ProfileRoles, ProfileStatus, StoatButton, StoatButtonLayoutThemePartialExt, use_floating
+        ProfileBadges, ProfileBanner, ProfileBio, ProfileButtons, ProfileJoined, ProfileRoles, ProfileStatus, StoatButton, StoatButtonLayoutThemePartialExt, use_floating
     },
-    http,
+    http, use_material_theme,
 };
 
 #[derive(PartialEq)]
@@ -21,6 +19,7 @@ impl Component for UserCard {
     fn render(&self) -> impl IntoElement {
         let radio = use_radio(AppChannel::UserProfile);
         let open_profile = radio.slice_mut_current(|state| &mut state.user_profile);
+        let theme = use_material_theme();
 
         let user = use_memo({
             let user = self.user.clone();
@@ -63,7 +62,7 @@ impl Component for UserCard {
         rect()
             .corner_radius(28.)
             .overflow(Overflow::Clip)
-            .background(0xff292a2f)
+            .background(theme.md.surface_container_high.as_argb_u32())
             .width(Size::px(340.))
             .height(Size::px(400.))
             .child(
@@ -74,7 +73,7 @@ impl Component for UserCard {
                         .content(Content::Flex)
                         .child(
                             StoatButton::new()
-                                .corner_radius(40.)
+                                .corner_radius(28.)
                                 .child(ProfileBanner {
                                     user: self.user.clone(),
                                     profile: profile.into_readable(),

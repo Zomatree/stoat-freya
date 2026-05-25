@@ -1,7 +1,6 @@
-// use freya::prelude::{
-//     AccessibilityExt, AccessibilityRole, ChildrenExt, Color, Component, ComponentKey, ContainerExt, ContainerSizeExt, CornerRadius, CornerRadiusExt, Cursor, CursorIcon, DiffKey, Element, Event, EventHandler, EventHandlersExt, Gaps, IntoElement, KeyExt, MouseButton, Overflow, Position, PressEventData, Size, StyleExt, WritableUtils, define_theme, get_theme, rect, use_drop, use_focus, use_state
-// };
 use freya::prelude::*;
+
+use crate::use_material_theme;
 
 define_theme! {
     for = StoatButton;
@@ -77,12 +76,12 @@ impl KeyExt for StoatButton {
     }
 }
 
-
 impl Component for StoatButton {
     fn render(&self) -> impl IntoElement {
         let mut hovering = use_state(|| false);
         let a11y_id = use_a11y();
-        let focus = use_focus(a11y_id);
+        let theme = use_material_theme();
+        let mut size = use_state(Size2D::default);
 
         use_drop(move || {
             if hovering() {
@@ -101,22 +100,30 @@ impl Component for StoatButton {
             "stoat_button_layout"
         );
 
-        let background = if hovering() && theme_colors.hover_background != Color::TRANSPARENT {
-            theme_colors.hover_background
+        // let background = if hovering() && theme_colors.hover_background != Color::TRANSPARENT {
+        //     theme_colors.hover_background
+        // } else {
+        //     theme_colors.background
+        // };
+
+        let color = if theme_colors.color == Color::TRANSPARENT {
+            theme.md.on_surface.as_argb_u32().into()
         } else {
-            theme_colors.background
+            theme_colors.color
         };
+
 
         rect()
             .overflow(Overflow::Clip)
             .a11y_id(a11y_id)
             .a11y_role(AccessibilityRole::Button)
-            .background(background)
+            .background(theme_colors.background)
             .padding(theme_layout.padding)
+            .margin(theme_layout.margin)
             .corner_radius(theme_layout.corner_radius)
             .width(theme_layout.width)
             .height(theme_layout.height)
-            .color(theme_colors.color)
+            .color(color)
             .on_all_press({
                 let on_press = self.on_press.clone();
                 move |e: Event<PressEventData>| {
@@ -148,9 +155,23 @@ impl Component for StoatButton {
             .on_pointer_leave(move |_| {
                 Cursor::set(CursorIcon::default());
             })
-            .content(Content::Fit)
-            .child(rect().children(self.elements.clone()))
-            .child(rect().position(Position::new_absolute()).width(Size::FillMinimum).height(Size::FillMinimum).interactive(false).background(0xffe3e1e9).overflow(Overflow::Clip).corner_radius(theme_layout.corner_radius).opacity(if *hovering.read() { 0.08 } else { 0. }))
+            .child(
+                rect()
+                    .on_sized(move |e: Event<SizedEventData>| size.set(e.inner_sizes))
+                    .children(self.elements.clone()),
+            )
+            .child(
+                rect()
+                    .position(Position::new_absolute())
+                    .layer(Layer::Relative(i16::MAX - 1))
+                    .width(Size::px(size.read().width))
+                    .height(Size::px(size.read().height))
+                    .interactive(false)
+                    .background(theme.md.on_surface.as_argb_u32())
+                    .overflow(Overflow::Clip)
+                    .corner_radius(theme_layout.corner_radius)
+                    .opacity(if *hovering.read() { 0.08 } else { 0. }),
+            )
     }
 
     fn render_key(&self) -> DiffKey {

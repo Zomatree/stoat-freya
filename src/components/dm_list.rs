@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use freya::{
     icons::lucide::{house, notebook_text, users_round},
     prelude::*,
@@ -9,8 +7,10 @@ use stoat_models::v0;
 
 use crate::{
     AppChannel,
-    components::{DMButton, HomeSelection},
+    components::{DMButton, HomeSelection, StoatButton, StoatButtonLayoutThemePartialExt},
     http,
+    theme::Theme,
+    use_material_theme,
 };
 
 #[derive(PartialEq)]
@@ -21,6 +21,7 @@ pub struct DMList {
 impl Component for DMList {
     fn render(&self) -> impl IntoElement {
         let radio = use_radio(AppChannel::Channels);
+        let theme = use_material_theme();
 
         let saved_messages = use_memo({
             let radio = radio.clone();
@@ -112,6 +113,7 @@ impl Component for DMList {
                             dmlist_nav_button(
                                 house(),
                                 "Home",
+                                &theme,
                                 &*self.selection.read() == &HomeSelection::Welcome,
                             )
                             .on_press({
@@ -126,6 +128,7 @@ impl Component for DMList {
                             dmlist_nav_button(
                                 users_round(),
                                 "Friends",
+                                &theme,
                                 &*self.selection.read() == &HomeSelection::Friends,
                             )
                             .on_press({
@@ -140,7 +143,13 @@ impl Component for DMList {
                             dmlist_nav_button(
                                 notebook_text(),
                                 "Saved Notes",
-                                saved_messages.read().as_ref().is_some_and(|c| self.selection.read().channel_id().is_some_and(|s| s == c.id()))
+                                &theme,
+                                saved_messages.read().as_ref().is_some_and(|c| {
+                                    self.selection
+                                        .read()
+                                        .channel_id()
+                                        .is_some_and(|s| s == c.id())
+                                }),
                             )
                             .on_press({
                                 let mut radio = radio.clone();
@@ -206,18 +215,24 @@ impl Component for DMList {
     }
 }
 
-pub fn dmlist_nav_button(icon: Bytes, title: &'static str, selected: bool) -> Rect {
-    rect()
-        .horizontal()
-        .padding((0., 8., 0., 8.))
-        .spacing(8.)
-        .height(Size::px(42.))
-        .cross_align(Alignment::Center)
+pub fn dmlist_nav_button(icon: Bytes, title: &'static str, theme: &Theme, selected: bool) -> StoatButton {
+    StoatButton::new()
         .corner_radius(42.)
-        .overflow(Overflow::Clip)
-        .font_size(15)
-        .child(svg(icon).width(Size::px(24.)).height(Size::px(24.)))
-        .child(title)
-        .maybe(selected, |btn| btn.background(0xff384379).color(0xffdde1ff))
-        .width(Size::Fill)
+        .child(
+            rect()
+                .horizontal()
+                .padding((0., 8., 0., 8.))
+                .spacing(8.)
+                .height(Size::px(42.))
+                .cross_align(Alignment::Center)
+                .font_size(15)
+                .color(theme.md.outline.as_argb_u32())
+                .maybe(selected, |btn| {
+                    btn.background(theme.md.primary_container.as_argb_u32())
+                        .color(theme.md.on_primary_container.as_argb_u32())
+                })
+                .width(Size::Fill)
+                .child(svg(icon).width(Size::px(24.)).height(Size::px(24.)))
+                .child(title)
+        )
 }

@@ -5,7 +5,7 @@ use stoat_models::v0;
 
 use crate::{
     AppChannel,
-    components::{Avatar, StoatButton, UserCard, use_floating},
+    components::{Avatar, StoatButton, StoatButtonLayoutThemePartialExt, UserCard, use_floating},
     http, member_display_color,
 };
 
@@ -375,11 +375,12 @@ impl Component for MemberListMember {
         });
 
         rect()
-            .padding((0., 16., 0., 4.))
+            .padding((0., 8.))
             .height(Size::px(42.))
             .width(Size::Fill)
             .child(
                 StoatButton::new()
+                .corner_radius(28.)
                     .on_press({
                         let user = self.user.clone();
                         let member = self.member.clone();
@@ -398,7 +399,8 @@ impl Component for MemberListMember {
                         rect()
                             .padding((0., 8.))
                             .horizontal()
-                            .height(Size::Fill)
+                            // .height(Size::Fill)
+                            .expanded()
                             .cross_align(Alignment::Center)
                             .spacing(8.)
                             .child(

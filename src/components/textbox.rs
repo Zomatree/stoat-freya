@@ -1,36 +1,49 @@
-use std::{borrow::Cow, collections::HashMap};
+use std::borrow::Cow;
 
-use freya::{icons::lucide::plus, prelude::*, radio::use_radio, text_edit::*};
-use rfd::AsyncFileDialog;
+use freya::{
+    icons::lucide::{plus, smile},
+    prelude::*,
+    radio::use_radio,
+    text_edit::*,
+};
 use stoat_models::v0;
 
-use crate::{AppChannel, LocalFile, components::ReplyController, http};
+use crate::{
+    AppChannel, LocalFile,
+    components::{
+        AttachmentController, EmojiPicker, ReplyController, StoatButton, StoatButtonLayoutThemePartialExt, use_floating
+    },
+    http, use_material_theme,
+};
 
 #[derive(PartialEq)]
 pub struct Textbox {
     pub replies: ReplyController,
-    pub attachments: State<HashMap<u64, (String, Bytes)>>,
+    pub attachments: AttachmentController,
     pub channel: Readable<v0::Channel>,
 }
 
 impl Component for Textbox {
     fn render(&self) -> impl IntoElement {
         let radio = use_radio(AppChannel::UserId);
+        let theme = use_material_theme();
         let holder = use_state(ParagraphHolder::default);
         let mut editable = use_editable(String::new, EditableConfig::new);
         let a11y_id = use_a11y();
-        let focus = use_focus(a11y_id);
+        let mut floating = use_floating();
 
         rect()
+        .width(Size::Fill)
             .font_size(14)
             .horizontal()
             .min_height(Size::px(40.))
             .spacing(8.)
-            .content(Content::Fit)
+            // .content(Content::Fit)
             .child(
                 rect()
                     .horizontal()
-                    .background(0xff292a2f)
+                    .content(Content::Flex)
+                    .background(theme.md.surface_container_high.as_argb_u32())
                     .corner_radius(CornerRadius {
                         top_left: 28.,
                         top_right: 28.,
@@ -38,43 +51,40 @@ impl Component for Textbox {
                         bottom_left: 28.,
                         smoothing: 0.,
                     })
-                    .padding((4., 0.))
+                    .padding((4., 8., 4., 0.))
                     .cross_align(Alignment::Center)
                     .child(
                         rect().width(Size::px(62.)).center().child(
-                            Button::new()
-                                .color(0xffc6c5d0)
-                                .width(Size::px(40.))
-                                .height(Size::px(40.))
-                                .flat()
+                            StoatButton::new()
+                                .corner_radius(40.)
                                 .on_press({
-                                    let mut attachments = self.attachments.clone();
+                                    let attachments = self.attachments.clone();
 
                                     move |_| {
                                         spawn(async move {
-                                            if let Some(file) =
-                                                AsyncFileDialog::new().pick_file().await
-                                            {
-                                                let contents = file.read().await.into();
-                                                let filename = file.file_name();
-
-                                                attachments
-                                                    .write()
-                                                    .insert(rand::random(), (filename, contents));
-                                            };
+                                            attachments.prompt().await;
                                         });
                                     }
                                 })
-                                .child(svg(plus()).width(Size::px(24.)).height(Size::px(24.))),
+                                .child(
+                                    rect()
+                                        .width(Size::px(40.))
+                                        .height(Size::px(40.))
+                                        .center()
+                                        .child(
+                                            svg(plus()).width(Size::px(24.)).height(Size::px(24.)),
+                                        ),
+                                ),
                         ),
                     )
                     .child(
                         rect()
+                        .width(Size::flex(1.))
                             .child(
                                 paragraph()
                                     .margin((4., 2., 4., 6.))
-                                    // .width(Size::Fill)
-                                    .width(Size::func(|size| Some(size.parent - 16.)))
+                                    .width(Size::Fill)
+                                    // .width(Size::func(|size| Some(size.parent - 16.)))
                                     .a11y_id(a11y_id)
                                     .a11y_auto_focus(true)
                                     .cursor_index(editable.editor().read().cursor_pos())
@@ -109,7 +119,7 @@ impl Component for Textbox {
                                     .on_key_down({
                                         let channel = self.channel.clone();
                                         let mut replies = self.replies.clone();
-                                        let mut attachments = self.attachments.clone();
+                                        let attachments = self.attachments.clone();
 
                                         move |e: Event<KeyboardEventData>| {
                                             if e.key == Key::Named(NamedKey::Enter)
@@ -128,8 +138,7 @@ impl Component for Textbox {
 
                                                 let message_replies = replies.take_replies();
 
-                                                let attachments =
-                                                    std::mem::take(&mut *attachments.write());
+                                                let attachments = attachments.take();
 
                                                 spawn({
                                                     let channel_id =
@@ -138,15 +147,19 @@ impl Component for Textbox {
                                                     async move {
                                                         let mut attachment_ids = Vec::new();
 
-                                                        for (name, content) in
+                                                        for attachment in
                                                             attachments.into_values()
                                                         {
                                                             let file = http()
                                                                 .upload_file(
                                                                     "attachments",
                                                                     LocalFile {
-                                                                        name,
-                                                                        body: content.into(),
+                                                                        name: if attachment.spoiler {
+                                                                            format!("SPOILER_{}", attachment.filename)
+                                                                        } else {
+                                                                            attachment.filename
+                                                                        },
+                                                                        body: attachment.contents.into(),
                                                                     },
                                                                 )
                                                                 .await
@@ -237,6 +250,24 @@ impl Component for Textbox {
                                         .padding((4., 2., 4., 6.))
                                 },
                             )),
+                    )
+                    .child(
+                        StoatButton::new()
+                            .corner_radius(40.)
+                            .on_press({
+                                move |_| {
+                                    floating.set(Some(
+                                        EmojiPicker::new(move |e| println!("{e:?}")).into_element(),
+                                    ));
+                                }
+                            })
+                            .child(
+                                rect()
+                                    .width(Size::px(40.))
+                                    .height(Size::px(40.))
+                                    .center()
+                                    .child(svg(smile()).width(Size::px(24.)).height(Size::px(24.))),
+                            ),
                     ),
             )
     }

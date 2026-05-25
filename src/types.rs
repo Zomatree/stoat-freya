@@ -443,3 +443,9 @@ pub enum ClientMessage {
     Subscribe { server_id: String },
     Ping { data: Ping },
 }
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct Account {
+    pub id: String,
+    pub email: String
+}

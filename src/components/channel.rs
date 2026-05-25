@@ -1,19 +1,21 @@
-use std::{borrow::Cow, collections::HashMap};
+use std::{borrow::Cow, fmt::Debug, mem};
 
 use freya::{
-    icons::lucide::{chevron_left, hash, pin, users_round},
+    icons::lucide::{at_sign, hash, notebook_text, pin, users_round},
     prelude::*,
     radio::use_radio,
 };
+use indexmap::IndexMap;
+use rfd::AsyncFileDialog;
 use stoat_models::v0;
 
 use crate::{
     AppChannel,
     components::{
-        ChannelMessages, MemberList, MessageAttachmentsPreview, MessageModel, MessageReplyPreview,
-        StoatButton, Textbox,
+        ChannelMessages, HideSidebarHeader, MemberList, MessageAttachmentsPreview, MessageModel,
+        MessageReplyPreview, StoatButton, StoatButtonLayoutThemePartialExt, Textbox,
     },
-    map_readable, use_config,
+    map_readable, use_config, use_material_theme,
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -31,10 +33,7 @@ impl ReplyController {
             let id = reply.message.message.id.clone();
 
             map_readable::<Vec<ReplyIntent>, ReplyIntent>(self.0.into_readable(), move |replies| {
-                replies
-                    .iter()
-                    .find(|r| r.message.message.id == id)
-                    .unwrap()
+                replies.iter().find(|r| r.message.message.id == id).unwrap()
             })
         })
     }
@@ -84,6 +83,97 @@ impl ReplyController {
     }
 }
 
+#[derive(Clone, PartialEq)]
+pub struct Attachment {
+    pub controller: AttachmentController,
+
+    pub id: u64,
+    pub filename: String,
+    pub spoiler: bool,
+    pub contents: Bytes,
+}
+
+impl Debug for Attachment {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Attachment")
+            .field("id", &self.id)
+            .field("filename", &self.filename)
+            .field("spoiler", &self.spoiler)
+            .field("contents", &self.contents)
+            .finish_non_exhaustive()
+    }
+}
+
+impl Attachment {
+    pub fn remove(&self) {
+        self.controller.remove(self.id);
+    }
+
+    pub fn toggle_spoiler(&self) {
+        self.controller.toggle_spoiler(self.id);
+    }
+}
+
+#[derive(Clone, Copy, PartialEq)]
+pub struct AttachmentController(State<IndexMap<u64, Attachment>>);
+
+impl AttachmentController {
+    pub fn is_empty(&self) -> bool {
+        self.0.read().is_empty()
+    }
+
+    pub fn not_empty(&self) -> bool {
+        !self.is_empty()
+    }
+
+    pub fn get_attachments(&self) -> impl Iterator<Item = Attachment> {
+        self.0.read().clone().into_values()
+    }
+
+    pub fn remove(&self, id: u64) {
+        self.0.clone().write().shift_remove(&id);
+    }
+
+    pub fn take(&self) -> IndexMap<u64, Attachment> {
+        mem::take(&mut *self.0.clone().write())
+    }
+
+    pub fn toggle_spoiler(&self, id: u64) {
+        self.0.clone().with_mut(|mut attachments| {
+            if let Some(attachment) = attachments.get_mut(&id) {
+                attachment.spoiler = !attachment.spoiler;
+            };
+        });
+    }
+
+    pub async fn prompt(&self) {
+        if let Some(file) = AsyncFileDialog::new().pick_file().await {
+            let contents = file.read().await.into();
+            let filename = file.file_name();
+
+            let id = rand::random();
+
+            let (filename, spoiler) = if let Some(filename) = filename.strip_prefix("SPOILER_") {
+                (filename.to_string(), true)
+            } else {
+                (filename, false)
+            };
+
+            let attachment = Attachment {
+                controller: *self,
+                id,
+                filename,
+                spoiler,
+                contents,
+            };
+
+            self.0.clone()
+                .write()
+                .insert(id, attachment);
+        };
+    }
+}
+
 #[derive(PartialEq)]
 pub struct Channel {
     pub channel: Readable<v0::Channel>,
@@ -94,14 +184,13 @@ impl Component for Channel {
     fn render(&self) -> impl IntoElement {
         let mut config = use_config();
         let radio = use_radio(AppChannel::UserId);
+        let theme = use_material_theme();
 
         let mut textbox_size = use_state(Area::default);
-        let textbox_height = textbox_size.read().height();
 
         let replies = ReplyController(use_state(Vec::<ReplyIntent>::new));
-        let attachments = use_state(HashMap::new);
+        let attachments = AttachmentController(use_state(IndexMap::new));
 
-        let hide_channel_list = config.read().hide_channel_list;
         let hide_members_list = config.read().hide_members_list;
 
         let search = use_state(String::new);
@@ -111,29 +200,18 @@ impl Component for Channel {
                 rect()
                     .horizontal()
                     .height(Size::px(48.))
-                    .padding((0., 24., 0., 16.))
+                    .padding((0., 24., 0., 8.))
                     .margin((8., 0.))
                     .spacing(10.)
                     .cross_align(Alignment::Center)
                     .content(Content::Flex)
-                    .child(
-                        StoatButton::new()
-                            .on_press(move |_| {
-                                config.write().hide_channel_list = !hide_channel_list;
-                            })
-                            .child(
-                                rect()
-                                    .cross_align(Alignment::Center)
-                                    .horizontal()
-                                    .child(
-                                        svg(chevron_left())
-                                            .width(Size::px(20.))
-                                            .height(Size::px(20.))
-                                            .rotate(if hide_channel_list { 180. } else { 0. }),
-                                    )
-                                    .child(svg(hash()).width(Size::px(24.)).height(Size::px(24.))),
-                            ),
-                    )
+                    .child(HideSidebarHeader {
+                        icon: match &*self.channel.read() {
+                            v0::Channel::DirectMessage { .. } => at_sign(),
+                            v0::Channel::SavedMessages { .. } => notebook_text(),
+                            _ => hash(),
+                        },
+                    })
                     .child(
                         label()
                             .text(match &*self.channel.read() {
@@ -159,21 +237,26 @@ impl Component for Channel {
                                 }
                             })
                             .font_size(16)
-                            .max_lines(1)
+                            .max_lines(1),
                     )
                     .child(rect().width(Size::flex(1.)))
                     .child(
-                        StoatButton::new().on_press(move |_| {}).child(
-                            rect()
-                                .horizontal()
-                                .height(Size::px(40.))
-                                .padding((0., 8.))
-                                .center()
-                                .child(svg(pin()).width(Size::px(24.)).height(Size::px(24.))),
-                        ),
+                        StoatButton::new()
+                            .corner_radius(40.)
+                            .on_press(move |_| {})
+                            .child(
+                                rect()
+                                    .horizontal()
+                                    .height(Size::px(40.))
+                                    .padding((0., 8.))
+                                    .center()
+                                    .color(theme.md.on_surface_variant.as_argb_u32())
+                                    .child(svg(pin()).width(Size::px(24.)).height(Size::px(24.))),
+                            ),
                     )
                     .child(
                         StoatButton::new()
+                            .corner_radius(40.)
                             .on_press(move |_| {
                                 config.write().hide_members_list = !hide_members_list
                             })
@@ -183,6 +266,7 @@ impl Component for Channel {
                                     .height(Size::px(40.))
                                     .padding((0., 8.))
                                     .center()
+                                    .color(theme.md.on_surface_variant.as_argb_u32())
                                     .child(
                                         svg(users_round())
                                             .width(Size::px(24.))
@@ -191,43 +275,42 @@ impl Component for Channel {
                             ),
                     )
                     .child(
-                        rect().child(
-                        Input::new(search)
-                            .placeholder("Search messages...")
-                            .border_fill(Color::TRANSPARENT)
-                            .inner_margin((10., 16.))
-                            .corner_radius(40.)
-                            .width(Size::Fill)
-                            .background(0xff292a2f)
-                        ).max_width(Size::px(240.))
+                        rect()
+                            .child(
+                                Input::new(search)
+                                    .placeholder("Search messages...")
+                                    .border_fill(Color::TRANSPARENT)
+                                    .inner_margin((10., 16.))
+                                    .corner_radius(40.)
+                                    .width(Size::Fill)
+                                    .background(theme.md.surface_container_high.as_argb_u32()),
+                            )
+                            .max_width(Size::px(240.)),
                     ),
             )
             .child(
                 rect()
+                    .height(Size::Fill)
                     .horizontal()
                     .content(Content::Flex)
                     .child(
                         rect()
+                            .height(Size::Fill)
                             .width(Size::flex(1.))
+                            .content(Content::Flex)
                             .margin((0., 8., 8., 8.))
                             .corner_radius(28.)
-                            .background(0xff0d0e13)
+                            .background(theme.md.surface_container_lowest.as_argb_u32())
                             .overflow(Overflow::Clip)
+                            .child(rect().height(Size::flex(1.)).child(ChannelMessages {
+                                replies,
+                                channel: self.channel.clone(),
+                                server: self.server.clone(),
+                            }))
                             .child(
                                 rect()
-                                    .height(Size::func_data(
-                                        move |size| Some(size.parent - (textbox_height + 8.)),
-                                        &(textbox_height as i32),
-                                    ))
-                                    .child(ChannelMessages {
-                                        replies,
-                                        channel: self.channel.clone(),
-                                        server: self.server.clone(),
-                                    }),
-                            )
-                            .child(
-                                rect()
-                                    .maybe_child((!attachments.read().is_empty()).then(|| {
+                                    .width(Size::Fill)
+                                    .maybe_child(attachments.not_empty().then(|| {
                                         rect()
                                             .margin((0., 0., 8., 0.))
                                             .width(Size::func(|size| Some(size.parent - 16.)))

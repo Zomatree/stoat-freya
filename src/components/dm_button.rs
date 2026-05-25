@@ -5,7 +5,7 @@ use stoat_models::v0;
 
 use crate::{
     AppChannel,
-    components::{HomeSelection, Avatar, image},
+    components::{Avatar, HomeSelection, StoatButton, StoatButtonLayoutThemePartialExt, image}, use_material_theme,
 };
 
 #[derive(PartialEq)]
@@ -18,19 +18,20 @@ impl Component for DMButton {
     fn render(&self) -> impl IntoElement {
         let radio = use_radio(AppChannel::UserId);
         let user_id = radio.read().user_id.clone().unwrap();
+        let theme = use_material_theme();
 
-        rect()
+        StoatButton::new()
+            .corner_radius(42.)
+            .child(rect()
             .padding((0., 8., 0., 8.))
             .spacing(8.)
             .height(Size::px(42.))
             .width(Size::Fill)
             .main_align(Alignment::Center)
-            .corner_radius(42.)
-            .overflow(Overflow::Clip)
-            .color(0xff90909a)
+            .color(theme.md.outline.as_argb_u32())
             .maybe(
                 self.selection.read().channel_id() == Some(self.channel.read().id()),
-                |btn| btn.background(0xff384379).color(0xffdde1ff),
+                |btn| btn.background(theme.md.primary_container.as_argb_u32()).color(theme.md.on_primary_container.as_argb_u32()),
             )
             .child(match self.channel.read().clone() {
                 v0::Channel::DirectMessage { recipients, .. } => {
@@ -55,6 +56,7 @@ impl Component for DMButton {
                 .into_element(),
                 _ => unreachable!(),
             })
+        )
             .on_press({
                 let channel = self.channel.clone();
                 let mut selection = self.selection.clone();
@@ -64,12 +66,6 @@ impl Component for DMButton {
 
                     *selection.write() = HomeSelection::DM(id);
                 }
-            })
-            .on_pointer_enter(|_| {
-                Cursor::set(CursorIcon::Pointer);
-            })
-            .on_pointer_leave(|_| {
-                Cursor::set(CursorIcon::Default);
             })
     }
 }
@@ -142,6 +138,8 @@ pub struct DMGroupButton {
 
 impl Component for DMGroupButton {
     fn render(&self) -> impl IntoElement {
+        let theme = use_material_theme();
+
         let (name, icon, users) = match &*self.channel.read() {
             v0::Channel::Group {
                 name,
@@ -172,13 +170,13 @@ impl Component for DMGroupButton {
                                 .collect::<String>();
 
                             rect()
-                                .background(0xffb9c3ff)
+                                .background(theme.md.primary.as_argb_u32())
                                 .width(Size::Fill)
                                 .height(Size::Fill)
                                 .center()
                                 .font_size(12)
                                 .child(initials)
-                                .color(0xff202c61)
+                                .color(theme.md.on_primary.as_argb_u32())
                                 .into_element()
                         }
                     }),

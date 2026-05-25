@@ -7,7 +7,7 @@ use stoat_models::v0;
 
 use crate::{
     AppChannel,
-    components::{MessageModel, ReplyController},
+    components::{MessageModel, ReplyController, StoatButton, StoatButtonColorsThemePartialExt}, theme::Theme, use_material_theme,
 };
 
 #[derive(PartialEq)]
@@ -52,6 +52,7 @@ impl ContainerExt for MessageActions {}
 impl Component for MessageActions {
     fn render(&self) -> impl IntoElement {
         let radio = use_radio(AppChannel::UserId);
+        let theme = use_material_theme();
         let user_id = radio.slice_current(|state| state.user_id.as_ref().unwrap());
         let mut editing_message = radio.slice_mut(AppChannel::EditingMessage, |state| {
             &mut state.editing_message
@@ -109,13 +110,9 @@ impl Component for MessageActions {
             .corner_radius(12.)
             // .overflow(Overflow::Clip)
             .children(self.children.clone())
-            .maybe(*mentions_user.read(), |this| this.background(0xff384379))
+            .maybe(*mentions_user.read(), |this| this.background(theme.md.primary_container.as_argb_u32()))
             .maybe(*hovering.read() || *hover_actions.read(), |this| {
-                if *mentions_user.read() {
-                    this.background(0xff1f1f25)
-                } else {
-                    this.background(0xff1f1f25)
-                }
+                this.background(theme.md.surface_container.as_argb_u32())
             })
             .maybe_child((*hovering.read() || *hover_actions.read()).then(|| {
                 rect()
@@ -128,7 +125,7 @@ impl Component for MessageActions {
                     .overflow(Overflow::Clip)
                     .horizontal()
                     .shadow(Shadow::new().blur(3.).color(Color::BLACK))
-                    .child(message_actions_button(undo()).on_press({
+                    .child(message_actions_button(undo(), &theme).on_press({
                         let mut replies = self.replies;
                         let message = self.message.clone();
 
@@ -136,9 +133,9 @@ impl Component for MessageActions {
                             replies.add_reply(message.clone(), true);
                         }
                     }))
-                    .child(message_actions_button(smile()))
+                    .child(message_actions_button(smile(), &theme))
                     .maybe_child((&self.message.message.author == &*user_id.read()).then(|| {
-                        message_actions_button(pencil()).on_press({
+                        message_actions_button(pencil(), &theme).on_press({
                             let message = self.message.message.clone();
 
                             move |_| {
@@ -150,8 +147,8 @@ impl Component for MessageActions {
                             }
                         })
                     }))
-                    .child(message_actions_button(trash_2()))
-                    .child(message_actions_button(ellipsis_vertical()))
+                    .child(message_actions_button(trash_2(), &theme))
+                    .child(message_actions_button(ellipsis_vertical(), &theme))
             }))
     }
 
@@ -160,16 +157,14 @@ impl Component for MessageActions {
     }
 }
 
-pub fn message_actions_button(icon: Bytes) -> Button {
-    Button::new()
-        .flat()
-        .corner_radius(0.)
-        .child(
+pub fn message_actions_button(icon: Bytes, theme: &Theme) -> StoatButton {
+    StoatButton::new()
+        .child(rect().padding(4.).child(
             svg(icon)
-                .color(0xffdfe1f9)
+                .color(theme.md.on_secondary_container.as_argb_u32())
                 .width(Size::px(20.))
-                .height(Size::px(20.)),
+                .height(Size::px(20.))
         )
-        .padding(4.)
-        .background(0xff424659)
+        )
+        .background(theme.md.secondary_container.as_argb_u32())
 }

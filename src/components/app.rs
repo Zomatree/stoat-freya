@@ -11,8 +11,7 @@ use tokio::{
 };
 
 use crate::{
-    AppChannel, AppState, ConnectionState, components, http, state, update_settings, use_config,
-    websocket::{self, Event, LocalEvent},
+    AppChannel, AppState, ConnectionState, components, http, state, update_settings, use_config, use_material_theme, websocket::{self, Event, LocalEvent}
 };
 
 #[derive(PartialEq)]
@@ -22,6 +21,7 @@ impl Component for App {
     fn render(&self) -> impl IntoElement {
         let station = use_init_radio_station::<AppState, AppChannel>(AppState::new);
         let config = use_config();
+        let theme = use_material_theme();
 
         let (_msg_s, msg_r) = use_hook(|| {
             let (s, r) = mpsc::unbounded_channel();
@@ -65,7 +65,7 @@ impl Component for App {
 
             async move {
                 while let Some(event) = event_r.lock().await.recv().await {
-                    println!("event");
+                    // println!("{event:?}");
 
                     match event {
                         Event::Stoat(event) => state::update_state(event, config, station),
@@ -109,7 +109,7 @@ impl Component for App {
                 .width(Size::Fill)
                 .height(Size::Fill)
                 .center()
-                .child(CircularLoader::new())
+                .child(CircularLoader::new().primary_color(theme.md.on_surface.as_argb_u32()))
                 .into_element()
         }
     }

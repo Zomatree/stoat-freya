@@ -61,18 +61,19 @@ impl Component for FriendsList {
             }
         });
 
-        rect().padding((0., 16.)).child(
+        // rect().padding((0., 16.)).child(
             VirtualScrollView::new(move |idx, _| {
                 let user = relations.read()[idx].clone();
 
                 rect()
                     .key(user.peek().id.clone())
-                    .padding((0., 0., 2., 0.))
+                    .padding((0., 16., 2., 16.))
+                    // .margin((0., 16.))
                     .child(FriendButton { user })
                     .into_element()
             })
             .item_size(54.)
-            .length(relations.read().len()),
-        )
+            .length(relations.read().len())
+        // )
     }
 }

@@ -3877,6 +3877,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ffbee8634e0d45d258acb448e7eaab3fce7a0a467395d4d9f228e3c1f01fb2e4"
 
 [[package]]
+name = "material-colors"
+version = "0.5.0"
+source = "git+https://github.com/Aiving/material-colors?rev=3fe7f52#3fe7f52cde8c221d9a44dec84bca3706a71bb080"
+dependencies = [
+ "ahash 0.8.12",
+ "indexmap",
+ "serde",
+]
+
+[[package]]
 name = "maybe-rayon"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6522,6 +6532,7 @@ dependencies = [
  "itertools 0.14.0",
  "jiff",
  "log",
+ "material-colors",
  "pretty_env_logger 0.5.0",
  "rand 0.10.1",
  "regex",

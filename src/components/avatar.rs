@@ -1,7 +1,7 @@
 use freya::prelude::*;
 use stoat_models::v0;
 
-use crate::{components::image, http};
+use crate::{components::image, http, use_material_theme};
 
 #[derive(PartialEq)]
 pub struct Avatar {
@@ -29,6 +29,8 @@ impl Avatar {
 
 impl Component for Avatar {
     fn render(&self) -> impl IntoElement {
+        let theme = use_material_theme();
+
         let image = self
             .member
             .as_ref()
@@ -73,16 +75,16 @@ impl Component for Avatar {
                 };
 
                 let color = match presence {
-                    v0::Presence::Online => 0xff3ABF7E,
-                    v0::Presence::Idle => 0xffF39F00,
-                    v0::Presence::Focus => 0xff4799F0,
-                    v0::Presence::Busy => 0xffF84848,
-                    v0::Presence::Invisible => 0xffA5A5A5,
+                    v0::Presence::Online => theme.stoat.presence_online,
+                    v0::Presence::Idle => theme.stoat.presence_idle,
+                    v0::Presence::Focus => theme.stoat.presence_focus,
+                    v0::Presence::Busy => theme.stoat.presence_busy,
+                    v0::Presence::Invisible => theme.stoat.presence_invisible,
                 };
 
                 rect()
                     .position(Position::new_absolute().left(pos).top(pos))
-                    .layer(Layer::Relative(5))
+                    .layer(Layer::Relative(1))
                     .width(Size::px(diameter))
                     .height(Size::px(diameter))
                     .corner_radius(diameter)

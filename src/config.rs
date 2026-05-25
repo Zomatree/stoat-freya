@@ -7,6 +7,39 @@ use etcetera::{AppStrategy, AppStrategyArgs, app_strategy::choose_native_strateg
 use freya::prelude::{State, use_consume};
 use serde::{Deserialize, Serialize};
 
+use crate::default_theme_source;
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
+pub enum ThemeScheme {
+    #[default]
+    Light,
+    Dark
+}
+
+impl ThemeScheme {
+    pub fn toggle(&mut self) {
+        match self {
+            ThemeScheme::Light => *self = ThemeScheme::Dark,
+            ThemeScheme::Dark => *self = ThemeScheme::Light
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
+pub struct ThemeConfig {
+    pub scheme: ThemeScheme,
+    pub theme_source: u32,
+}
+
+impl Default for ThemeConfig {
+    fn default() -> Self {
+        Self {
+            scheme: Default::default(),
+            theme_source: default_theme_source()
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 pub struct Config {
     #[serde(default)]
@@ -19,6 +52,8 @@ pub struct Config {
     pub hide_channel_list: bool,
     #[serde(default)]
     pub hide_members_list: bool,
+    #[serde(default)]
+    pub theme: ThemeConfig
 }
 
 pub fn get_config_path() -> PathBuf {

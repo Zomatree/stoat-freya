@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, HashSet, VecDeque},
+    collections::{HashMap, VecDeque},
     fmt::Debug,
     rc::Rc,
     time::Duration,
@@ -13,7 +13,7 @@ use tokio::time::sleep;
 use crate::{
     AppChannel, ChannelState,
     components::{
-        Deferred, Message, MessageActions, MessageGroup, MessageList, ReplyController,
+        Deferred, Message, MessageActions, MessageList, ReplyController,
         TrailingMessage,
     },
     http, map_readable,
@@ -83,12 +83,13 @@ impl Component for ChannelMessages {
             let messages = messages.clone();
             let channel_id = self.channel.peek().id().to_string();
 
-            let mut message_cache = radio.slice_mut(AppChannel::ChannelMessageCache, move |state| {
-                state
-                    .channel_message_cache
-                    .entry(channel_id.clone())
-                    .or_default()
-            });
+            let mut message_cache =
+                radio.slice_mut(AppChannel::ChannelMessageCache, move |state| {
+                    state
+                        .channel_message_cache
+                        .entry(channel_id.clone())
+                        .or_default()
+                });
 
             move || {
                 let messages = { messages.read().cloned() };
@@ -98,7 +99,7 @@ impl Component for ChannelMessages {
                     if !cache.contains_key(&message.id) {
                         cache.insert(message.id.clone(), message);
                     };
-                };
+                }
             }
         });
 
@@ -622,24 +623,19 @@ impl Component for ChannelMessages {
         let task_running = use_state(|| None::<TaskHandle>);
 
         {
-            let channel = self.channel.clone();
             let server = self.server.clone();
             let mut task_running = task_running.clone();
             let messages = messages.clone();
 
             use_side_effect(move || {
-                // task_running.take().inspect(|t| t.cancel());
                 let messages = messages.clone();
-                let channel = channel.clone();
                 let server = server.clone();
                 let mut messages_models = messages_models.clone();
-                let mut radio = radio.clone();
 
                 let _ = messages.read();
 
                 task_running.set(Some(spawn(async move {
                     let mut new_message_models = Vec::new();
-                    let channel_id = channel.read().id().to_string();
                     let messages = messages.read().clone();
 
                     for message in messages {

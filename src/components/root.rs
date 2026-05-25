@@ -18,7 +18,7 @@ impl Component for Root {
             *http().token.write().unwrap() = config.token.clone();
         });
 
-        if config.read().token.is_some() {
+        if config.read().token.is_some() && http().token.read().unwrap().is_some() {
             App {}.into_element()
         } else {
             Login {}.into_element()

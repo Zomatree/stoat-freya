@@ -1,9 +1,17 @@
 use std::hash::Hash;
 
-use freya::{icons::lucide::{hash, headset}, prelude::*, radio::use_radio};
+use freya::{
+    icons::lucide::{hash, headset},
+    prelude::*,
+    radio::use_radio,
+};
 use stoat_models::v0;
 
-use crate::{AppChannel, Config, NotificationBadge, get_unread_badge, is_channel_muted};
+use crate::{
+    AppChannel, Config, NotificationBadge,
+    components::{StoatButton, StoatButtonColorsThemePartialExt, StoatButtonLayoutThemePartialExt},
+    get_unread_badge, is_channel_muted, use_material_theme,
+};
 
 #[derive(PartialEq)]
 pub struct ChannelButton {
@@ -14,6 +22,7 @@ impl Component for ChannelButton {
     fn render(&self) -> impl IntoElement {
         let mut config = use_consume::<State<Config>>();
         let mut radio = use_radio(AppChannel::SelectedChannel);
+        let theme = use_material_theme();
         let selected = radio.slice_current(|state| &state.selected_channel);
         let unreads = radio.slice(AppChannel::ChannelUnreads, |state| &state.channel_unreads);
         let mutes = radio.slice(AppChannel::Settings("notifications"), |state| {
@@ -53,26 +62,14 @@ impl Component for ChannelButton {
 
         let selected = use_memo(move || selected.read().as_deref() == Some(channel.read().id()));
 
-        rect()
+        StoatButton::new()
             .key(channel.read().id().to_string())
-            .horizontal()
-            .content(Content::Flex)
-            .padding((0., 8., 0., 8.))
-            .margin((0., 8., 0., 8.))
-            .spacing(8.)
-            .height(Size::px(42.))
-            .cross_align(Alignment::Center)
+            // .margin((0., 8., 0., 8.))
             .corner_radius(42.)
-            .overflow(Overflow::Clip)
-            .font_size(15)
+            .color(theme.md.outline.as_argb_u32())
             .maybe(*selected.read(), |btn| {
-                btn.background(0xff384379).color(0xffdde1ff)
-            })
-            .on_pointer_enter(move |_| {
-                Cursor::set(CursorIcon::Pointer);
-            })
-            .on_pointer_leave(move |_| {
-                Cursor::set(CursorIcon::default());
+                btn.background(theme.md.primary_container.as_argb_u32())
+                    .color(theme.md.on_primary_container.as_argb_u32())
             })
             .on_press({
                 let channel = channel.clone();
@@ -94,38 +91,63 @@ impl Component for ChannelButton {
                     };
                 }
             })
-            .width(Size::Fill)
-            .child(svg(if matches!(&*channel.read(), v0::Channel::TextChannel { voice: Some(_), .. }) { headset() } else { hash() }).width(Size::px(24.)).height(Size::px(24.)))
             .child(
-                label()
-                    .text(channel.read().name().unwrap().to_string())
-                    .width(Size::flex(1.)),
-            )
-            .map(
-                unread_badge.read().filter(|_| !*selected.read()),
-                |this, badge| {
-                    this.color(0xffe3e1e9).child(match badge {
-                        NotificationBadge::Mentions(count) => rect()
-                            .corner_radius(14.)
-                            .width(Size::px(14.))
-                            .height(Size::px(14.))
-                            .center()
-                            .background(0xffffb4ab)
-                            .color(0xff690005)
-                            .font_size(8.)
-                            .child(if count <= 9 {
-                                count.to_string()
+                rect()
+                    .horizontal()
+                    .content(Content::Flex)
+                    .padding((0., 8., 0., 8.))
+                    .spacing(8.)
+                    .height(Size::px(42.))
+                    .cross_align(Alignment::Center)
+                    .overflow(Overflow::Clip)
+                    .font_size(15)
+                    .width(Size::Fill)
+                    .child(
+                        svg(
+                            if matches!(
+                                &*channel.read(),
+                                v0::Channel::TextChannel { voice: Some(_), .. }
+                            ) {
+                                headset()
                             } else {
-                                "+".to_string()
-                            }),
-                        NotificationBadge::Unread => rect()
-                            .corner_radius(7.)
-                            .width(Size::px(7.))
-                            .height(Size::px(7.))
-                            .background(0xffe3e1e9)
-                            .margin((0., 3.5)),
-                    })
-                },
+                                hash()
+                            },
+                        )
+                        .width(Size::px(24.))
+                        .height(Size::px(24.)),
+                    )
+                    .child(
+                        label()
+                            .text(channel.read().name().unwrap().to_string())
+                            .width(Size::flex(1.)),
+                    )
+                    .map(
+                        unread_badge.read().filter(|_| !*selected.read()),
+                        |this, badge| {
+                            this.color(theme.md.on_surface.as_argb_u32()).child(match badge {
+                                NotificationBadge::Mentions(count) => rect()
+                                    .corner_radius(14.)
+                                    .width(Size::px(14.))
+                                    .height(Size::px(14.))
+                                    .center()
+                                    .background(theme.md.error.as_argb_u32())
+                                    .color(theme.md.on_error.as_argb_u32())
+                                    .color(0xff690005)
+                                    .font_size(8.)
+                                    .child(if count <= 9 {
+                                        count.to_string()
+                                    } else {
+                                        "+".to_string()
+                                    }),
+                                NotificationBadge::Unread => rect()
+                                    .corner_radius(7.)
+                                    .width(Size::px(7.))
+                                    .height(Size::px(7.))
+                                    .background(theme.md.on_surface.as_argb_u32())
+                                    .margin((0., 3.5)),
+                            })
+                        },
+                    ),
             )
     }
 

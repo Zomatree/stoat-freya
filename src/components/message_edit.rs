@@ -24,7 +24,6 @@ impl Component for MessageEdit {
         let holder = use_state(ParagraphHolder::default);
         let mut editable = use_editable(|| self.content.clone(), EditableConfig::new);
         let a11y_id = use_a11y();
-        let focus = use_focus(a11y_id);
 
         let save_message = {
             let editing_message = editing_message.clone();

@@ -15,8 +15,7 @@ use std::{
 };
 
 use stoat_models::v0::{
-    AppendMessage, Channel, FieldsChannel, FieldsMessage, FieldsServer, Member, Message,
-    PartialMessage, RelationshipStatus, Server, User, UserSettings,
+    AppendMessage, Channel, Emoji, FieldsChannel, FieldsMessage, FieldsServer, FieldsUser, Member, Message, PartialMessage, RelationshipStatus, Server, User, UserSettings
 };
 use stoat_result::ErrorType;
 
@@ -188,6 +187,7 @@ pub struct AppState {
     pub servers: HashMap<String, Server>,
     pub members: HashMap<String, HashMap<String, Member>>,
     pub channels: HashMap<String, Channel>,
+    pub emojis: HashMap<String, Emoji>,
     pub channel_states: HashMap<String, ChannelState>,
     pub channel_message_cache: HashMap<String, HashMap<String, Message>>,
     pub channel_unreads: HashMap<String, ChannelUnread>,
@@ -236,6 +236,7 @@ pub enum AppChannel {
     Servers,
     Members,
     Channels,
+    Emojis,
     ChannelStates,
     ChannelUnreads,
     ChannelMessageCache,
@@ -415,6 +416,16 @@ pub fn ack_message(channel_id: &str, message_id: String, mut station: AppStation
     }
 }
 
+pub fn update_user(user_id: &str, mut station: AppStation, f: impl FnOnce(&mut User)) {
+    if let Some(user) = station.write_channel(AppChannel::Users).users.get_mut(user_id) {
+        f(user);
+    }
+}
+
+pub fn insert_emoji(emoji: Emoji, mut station: AppStation) {
+    station.write_channel(AppChannel::Emojis).emojis.insert(emoji.id.clone(), emoji);
+}
+
 pub fn update_state(
     event: EventV1,
     mut config: State<Config>,
@@ -444,7 +455,7 @@ pub fn update_state(
             servers,
             channels,
             members,
-            emojis: _,
+            emojis,
             user_settings,
             channel_unreads,
             policy_changes: _,
@@ -489,9 +500,9 @@ pub fn update_state(
             //     context.cache.insert_voice_state(voice_state);
             // }
 
-            // for emoji in emojis.into_iter().flatten() {
-            //     context.cache.insert_emoji(emoji);
-            // }
+            for emoji in emojis.into_iter().flatten() {
+                insert_emoji(emoji, station);
+            }
 
             {
                 let mut state = station.write_channel(AppChannel::State);
@@ -664,10 +675,10 @@ pub fn update_state(
             {
                 if let Some(message) = channel_state.messages.iter_mut().find(|m| m.id == id) {
                     if let Some(users) = message.reactions.get_mut(&emoji_id) {
-                        users.remove(&user_id);
+                        users.swap_remove(&user_id);
 
                         if users.is_empty() {
-                            message.reactions.remove(&emoji_id);
+                            message.reactions.swap_remove(&emoji_id);
                         };
                     }
                 }
@@ -686,7 +697,7 @@ pub fn update_state(
                 .get_mut(&channel_id)
             {
                 if let Some(message) = channel_state.messages.iter_mut().find(|m| m.id == id) {
-                    message.reactions.remove(&emoji_id);
+                    message.reactions.swap_remove(&emoji_id);
                 }
             } else if let Some(handle) = &station.read().message_handlers {
                 (handle.on_message_remove_reaction)(channel_id, id, emoji_id)
@@ -723,6 +734,23 @@ pub fn update_state(
             } else if let Some(handle) = &station.read().message_handlers {
                 (handle.on_message_append)(channel, id, append)
             }
+        }
+        EventV1::UserUpdate { id, data, clear, event_id: _ } => {
+            update_user(&id, station, |user| {
+                user.apply_options(data);
+
+                for field in clear {
+                    match field {
+                        FieldsUser::Avatar => user.avatar = None,
+                        FieldsUser::StatusText => if let Some(status) = &mut user.status { status.text = None },
+                        FieldsUser::StatusPresence => if let Some(status) = &mut user.status { status.presence = None },
+                        FieldsUser::ProfileContent =>  {},
+                        FieldsUser::ProfileBackground => {},
+                        FieldsUser::DisplayName => user.display_name = None,
+                        FieldsUser::Internal => {},
+                    }
+                }
+            });
         }
         // EventV1::ChannelStartTyping { id, user } => {
         //     context

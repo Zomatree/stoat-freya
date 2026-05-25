@@ -1,10 +1,11 @@
-use std::rc::Rc;
+use std::{rc::Rc, time::SystemTime};
 
 use freya::{
     icons::lucide::{circle_x, ellipsis_vertical},
     prelude::*,
     radio::use_radio,
 };
+use jiff::{Timestamp, tz::TimeZone};
 use stoat_models::v0;
 
 use crate::{
@@ -14,6 +15,8 @@ use crate::{
         image,
     },
     http, parse_fill,
+    theme::Theme,
+    use_material_theme,
 };
 
 #[derive(PartialEq)]
@@ -24,6 +27,7 @@ pub struct UserProfile {
 impl Component for UserProfile {
     fn render(&self) -> impl IntoElement {
         let radio = use_radio(AppChannel::UserProfile);
+        let theme = use_material_theme();
 
         let close_profile = move || radio.clone().write().user_profile = None;
 
@@ -49,66 +53,73 @@ impl Component for UserProfile {
             }
         });
 
-        rect()
-            .expanded()
-            .center()
-            .background(0xBB000000)
-            .on_press(move |_| close_profile())
-            .on_global_key_down(move |e: Event<KeyboardEventData>| {
-                if e.key == Key::Named(NamedKey::Escape) {
-                    close_profile()
-                }
-            })
-            .child(
+        rect().background(0xBB000000).expanded().child(
+            ScrollView::new().expanded().child(
                 rect()
-                    .on_press(|e: Event<PressEventData>| e.stop_propagation())
-                    .corner_radius(28.)
-                    .overflow(Overflow::Clip)
-                    .background(0xff292a2f)
-                    .width(Size::px(560.))
-                    .padding(8.)
+                    .padding(80.)
+                    .cross_align(Alignment::Center)
+                    .width(Size::Fill)
+                    .on_press(move |_| close_profile())
+                    .on_global_key_down(move |e: Event<KeyboardEventData>| {
+                        if e.key == Key::Named(NamedKey::Escape) {
+                            close_profile()
+                        }
+                    })
                     .child(
                         rect()
+                            .on_press(|e: Event<PressEventData>| e.stop_propagation())
+                            .corner_radius(28.)
+                            .background(theme.md.surface_container_high.as_argb_u32())
+                            .width(Size::px(560.))
                             .padding(8.)
-                            .spacing(8.)
-                            .content(Content::Flex)
-                            .child(ProfileBanner {
-                                user: self.user.clone(),
-                                profile: profile.into_readable(),
-                            })
-                            .child(ProfileButtons {
-                                user: self.user.clone(),
-                            })
-                            .child({
-                                let status_text = user
-                                    .read()
-                                    .status
-                                    .as_ref()
-                                    .and_then(|status| status.text.clone());
-
-                                let badges = user.read().badges;
-
-                                let show_hidden = status_text.is_none() || badges == 0;
-
-                                row()
+                            .child(
+                                rect()
+                                    .padding(8.)
+                                    .spacing(8.)
                                     .content(Content::Flex)
-                                    .maybe_child(status_text.map(|text| ProfileStatus { text }))
-                                    .maybe_child((badges != 0).then(|| ProfileBadges { badges }))
-                                    .child(ProfileJoined {
+                                    .child(ProfileBanner {
                                         user: self.user.clone(),
-                                        member: None,
+                                        profile: profile.into_readable(),
                                     })
-                                    .maybe_child(show_hidden.then(empty_card))
-                            })
-                            .maybe_child(
-                                profile
-                                    .read()
-                                    .as_ref()
-                                    .and_then(|profile| profile.content.clone())
-                                    .map(|bio| ProfileBio { bio }),
+                                    .child(ProfileButtons {
+                                        user: self.user.clone(),
+                                    })
+                                    .child({
+                                        let status_text = user
+                                            .read()
+                                            .status
+                                            .as_ref()
+                                            .and_then(|status| status.text.clone());
+
+                                        let badges = user.read().badges;
+
+                                        let show_hidden = status_text.is_none() || badges == 0;
+
+                                        row()
+                                            .content(Content::Flex)
+                                            .maybe_child(
+                                                status_text.map(|text| ProfileStatus { text }),
+                                            )
+                                            .maybe_child(
+                                                (badges != 0).then(|| ProfileBadges { badges }),
+                                            )
+                                            .child(ProfileJoined {
+                                                user: self.user.clone(),
+                                                member: None,
+                                            })
+                                            .maybe_child(show_hidden.then(empty_card))
+                                    })
+                                    .maybe_child(
+                                        profile
+                                            .read()
+                                            .as_ref()
+                                            .and_then(|profile| profile.content.clone())
+                                            .map(|bio| ProfileBio { bio }),
+                                    ),
                             ),
                     ),
-            )
+            ),
+        )
     }
 }
 
@@ -120,9 +131,9 @@ fn row() -> Rect {
         .width(Size::Fill)
 }
 
-fn card(title: &'static str, content: impl IntoElement) -> Rect {
+fn card(title: &'static str, theme: &Theme, content: impl IntoElement) -> Rect {
     rect()
-        .background(0xff1b1b21)
+        .background(theme.md.surface_container_low.as_argb_u32())
         .width(Size::flex(1.))
         .height(Size::px(170.))
         .padding(15.)
@@ -171,7 +182,7 @@ impl Component for ProfileBanner {
                 rect()
                     .padding(15.)
                     .position(Position::new_absolute().top(0.).left(0.))
-                    .layer(Layer::Overlay)
+                    .layer(Layer::Relative(1))
                     .width(Size::Fill)
                     .height(Size::px(120.))
                     .main_align(Alignment::End)
@@ -212,6 +223,7 @@ pub struct ProfileButtons {
 impl Component for ProfileButtons {
     fn render(&self) -> impl IntoElement {
         let radio = use_radio(AppChannel::Users);
+        let theme = use_material_theme();
 
         let user = self.user.read();
 
@@ -315,12 +327,11 @@ impl Component for ProfileButtons {
                             ),
                     )
                     .corner_radius(40.)
-                    .background(0xffb9c3ff)
-                    .color(0xff202c61)
+                    .background(theme.md.primary.as_argb_u32())
+                    .color(theme.md.on_primary.as_argb_u32())
             }))
             .maybe_child(secondary_action.map(|(icon, callback)| {
                 StoatButton::new()
-                    // .key(DiffKey::new_rc(&callback))
                     .on_press(move |_| callback())
                     .corner_radius(40.)
                     .child(
@@ -333,18 +344,21 @@ impl Component for ProfileButtons {
                     )
             }))
             .child(
-                StoatButton::new().on_press(move |_| {}).corner_radius(40.).child(
-                    rect()
-                        .horizontal()
-                        .height(Size::px(40.))
-                        .padding((0., 8.))
-                        .center()
-                        .child(
-                            svg(ellipsis_vertical())
-                                .width(Size::px(24.))
-                                .height(Size::px(24.)),
-                        ),
-                ),
+                StoatButton::new()
+                    .on_press(move |_| {})
+                    .corner_radius(40.)
+                    .child(
+                        rect()
+                            .horizontal()
+                            .height(Size::px(40.))
+                            .padding((0., 8.))
+                            .center()
+                            .child(
+                                svg(ellipsis_vertical())
+                                    .width(Size::px(24.))
+                                    .height(Size::px(24.)),
+                            ),
+                    ),
             )
     }
 }
@@ -356,7 +370,13 @@ pub struct ProfileStatus {
 
 impl Component for ProfileStatus {
     fn render(&self) -> impl IntoElement {
-        card("Status", label().text(self.text.clone()).font_size(14))
+        let theme = use_material_theme();
+
+        card(
+            "Status",
+            &theme,
+            label().text(self.text.clone()).font_size(14),
+        )
     }
 }
 
@@ -367,6 +387,8 @@ pub struct ProfileBadges {
 
 impl Component for ProfileBadges {
     fn render(&self) -> impl IntoElement {
+        let theme = use_material_theme();
+
         let badge = |badge: v0::UserBadges, value| {
             ((self.badges & badge.clone() as u32) == badge as u32).then(|| {
                 rect()
@@ -379,6 +401,7 @@ impl Component for ProfileBadges {
 
         card(
             "Badges",
+            &theme,
             rect()
                 .horizontal()
                 .spacing(8.)
@@ -408,30 +431,60 @@ pub struct ProfileJoined {
 impl Component for ProfileJoined {
     fn render(&self) -> impl IntoElement {
         let radio = use_radio(AppChannel::Servers);
+        let theme = use_material_theme();
+
+        let platform_joined_at = use_hook(|| {
+            Timestamp::try_from(
+                ulid::Ulid::from_string(&self.user.peek().id)
+                    .unwrap()
+                    .datetime(),
+            )
+            .unwrap()
+            .to_zoned(TimeZone::system())
+            .strftime("%b %d %Y")
+            .to_string()
+        });
+
+        let server_joined_at = use_hook(|| {
+            if let Some(member) = &self.member {
+                let member = member.read();
+                let state = radio.read();
+                let server = state.servers.get(&member.id.server).unwrap();
+
+                let joined_at = Timestamp::try_from(SystemTime::from(member.joined_at))
+                    .unwrap()
+                    .to_zoned(TimeZone::system())
+                    .strftime("%b %d %Y")
+                    .to_string();
+
+                Some((server.name.clone(), joined_at))
+            } else {
+                None
+            }
+        });
 
         card(
             "Joined",
+            &theme,
             rect()
                 .spacing(4.)
                 .child(
                     label()
                         .font_size(12.)
                         .font_weight(FontWeight::MEDIUM)
+                        .line_height(1.5)
                         .text("Stoat"),
                 )
-                .child(label().font_size(14.).text("Aug 15 2021"))
-                .map(self.member.as_ref(), |this, member| {
-                    let member = member.read();
-                    let state = radio.read();
-                    let server = state.servers.get(&member.id.server).unwrap();
-
+                .child(label().font_size(14.).line_height(1.5).text(platform_joined_at))
+                .map(server_joined_at, |this, (server_name, joined_at)| {
                     this.child(
                         label()
                             .font_size(12.)
                             .font_weight(FontWeight::MEDIUM)
-                            .text(server.name.clone()),
+                            .line_height(1.5)
+                            .text(server_name),
                     )
-                    .child(label().font_size(14.).text("Aug 15 2021"))
+                    .child(label().font_size(14.).line_height(1.5).text(joined_at))
                 }),
         )
     }
@@ -444,7 +497,14 @@ pub struct ProfileBio {
 
 impl Component for ProfileBio {
     fn render(&self) -> impl IntoElement {
-        card("Bio", SelectableText::new(self.bio.clone()).font_size(14)).height(Size::Inner)
+        let theme = use_material_theme();
+
+        card(
+            "Bio",
+            &theme,
+            SelectableText::new(self.bio.clone()).font_size(14),
+        )
+        .height(Size::Inner)
     }
 }
 
@@ -456,6 +516,7 @@ pub struct ProfileRoles {
 impl Component for ProfileRoles {
     fn render(&self) -> impl IntoElement {
         let radio = use_radio(AppChannel::Servers);
+        let theme = use_material_theme();
 
         let server = radio.slice_current({
             let member = self.member.clone();
@@ -487,6 +548,7 @@ impl Component for ProfileRoles {
 
         card(
             "Roles",
+            &theme,
             ScrollView::new().children(roles.read().iter().map(|(role, color)| {
                 rect()
                     .horizontal()

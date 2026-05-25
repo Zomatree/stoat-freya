@@ -6,7 +6,7 @@ use stoat_models::v0;
 use crate::{
     AppChannel,
     components::{Channel, ChannelList, image},
-    use_config,
+    use_config, use_material_theme,
 };
 
 #[derive(PartialEq)]
@@ -18,6 +18,7 @@ impl Component for Server {
     fn render(&self) -> impl IntoElement {
         let config = use_config();
         let radio = use_radio(AppChannel::SelectedChannel);
+        let theme = use_material_theme();
 
         let selected_channel = radio.slice_current(|state| &state.selected_channel);
         let channels = radio.slice(AppChannel::Channels, |state| &state.channels);
@@ -30,7 +31,7 @@ impl Component for Server {
                 bottom_left: 16.,
                 smoothing: 0.,
             })
-            .background(0xff1b1b21)
+            .background(theme.md.surface_container_low.as_argb_u32())
             .overflow(Overflow::Clip)
             .direction(Direction::Horizontal)
             .maybe_child(config.read().hide_channel_list.not().then(|| {

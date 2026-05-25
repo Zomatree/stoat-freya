@@ -1,50 +1,40 @@
 use freya::{
     icons::lucide::{
-        banknote, chevron_left, circle_plus, compass, house, message_square_text, settings, users,
+        banknote, circle_plus, compass, house, message_square_text, settings, users,
     },
     prelude::*,
     radio::use_radio,
 };
 
-use crate::{AppChannel, Selection, SettingsPage, components::StoatButton, use_config};
+use crate::{
+    AppChannel, Selection, SettingsPage,
+    components::{HideSidebarHeader, StoatButton, StoatButtonColorsThemePartialExt, StoatButtonLayoutThemePartialExt},
+    use_material_theme,
+};
 
 #[derive(PartialEq)]
 pub struct Welcome {}
 
 impl Component for Welcome {
     fn render(&self) -> impl IntoElement {
-        let mut config = use_config();
+        let theme = use_material_theme();
         let radio = use_radio(AppChannel::Selection);
         let selection = radio.slice_mut_current(|state| &mut state.selection);
-
-        let hide_channel_list = config.read().hide_channel_list;
 
         rect()
             .child(
                 rect()
                     .horizontal()
                     .height(Size::px(48.))
-                    .padding((0., 16.))
+                    .padding((0., 8.))
                     .margin((8., 8., 8., 0.))
                     .spacing(10.)
                     .cross_align(Alignment::Center)
                     .child(
-                        StoatButton::new()
-                            .on_press(move |_| {
-                                config.write().hide_channel_list = !hide_channel_list;
-                            })
-                            .child(
-                        rect()
-                            .cross_align(Alignment::Center)
-                            .horizontal()
-                            .child(
-                                svg(chevron_left())
-                                    .width(Size::px(20.))
-                                    .height(Size::px(20.))
-                                    .rotate(if hide_channel_list { 180. } else { 0. }),
-                            )
-                            .child(svg(house()).width(Size::px(24.)).height(Size::px(24.)))
-                        )
+                            HideSidebarHeader {
+                                icon: house()
+                            }
+
                     )
                     .child(label().text("Home").font_size(16))
             )
@@ -55,7 +45,7 @@ impl Component for Welcome {
                         .width(Size::Fill)
                         .height(Size::Fill)
                         .corner_radius(28.)
-                        .background(0xff0d0e13)
+                        .background(theme.md.surface_container_lowest.as_argb_u32())
                         .overflow(Overflow::Clip)
                         .child(
                             rect()
@@ -64,7 +54,7 @@ impl Component for Welcome {
                                 .padding((48., 8.))
                                 .spacing(32.)
                                 .center()
-                                .child(label().text("Stoat").font_size(46.))
+                                .child(label().text("Stoat").color(theme.md.on_surface.as_argb_u32()).font_size(46.))
                                 .child(
                                     rect()
                                         .spacing(8.)
@@ -161,24 +151,13 @@ impl WelcomeButton {
 
 impl Component for WelcomeButton {
     fn render(&self) -> impl IntoElement {
-        let mut hovering = use_state(|| false);
+        let theme = use_material_theme();
 
-        rect()
-            .width(Size::Fill)
-            .background(0xff424659)
-            .color(0xffdfe1f9)
+        StoatButton::new()
+            .color(theme.md.on_secondary_container.as_argb_u32())
+            .background(theme.md.secondary_container.as_argb_u32())
             .corner_radius(12.)
-            .overflow(Overflow::Clip)
-            .on_pointer_over(move |_| {
-                hovering.set(true);
-            })
-            .on_pointer_out(move |_| hovering.set_if_modified(false))
-            .on_pointer_enter(move |_| {
-                Cursor::set(CursorIcon::Pointer);
-            })
-            .on_pointer_leave(move |_| {
-                Cursor::set(CursorIcon::default());
-            })
+            .width(Size::Fill)
             .child(
                 rect()
                     .width(Size::Fill)
@@ -188,7 +167,8 @@ impl Component for WelcomeButton {
                     .cross_align(Alignment::Center)
                     .child(
                         rect()
-                            .background(0xff121318)
+                            .background(theme.md.surface_dim.as_argb_u32())
+                            .color(theme.md.on_surface.as_argb_u32())
                             .width(Size::px(36.))
                             .height(Size::px(36.))
                             .corner_radius(36.)
@@ -204,15 +184,7 @@ impl Component for WelcomeButton {
                             .spacing(2.)
                             .child(label().text(self.title).font_size(14))
                             .child(label().text(self.contents).font_size(12)),
-                    ),
-            )
-            .child(
-                rect()
-                    .position(Position::new_absolute())
-                    .width(Size::Fill)
-                    .height(Size::Fill)
-                    .background(0xffe3e1e9)
-                    .opacity(if *hovering.read() { 0.08 } else { 0. }),
+                    )
             )
             .on_press(self.on_press.clone())
     }

@@ -1,16 +1,12 @@
-use std::{f32::consts::PI, sync::LazyLock};
+use std::f32::consts::PI;
 
 use chumsky::{
     prelude::*,
     text::{digits, ident, int, keyword, whitespace},
 };
 use freya::prelude::*;
-// use regex::Regex;
 
-// static ANGLE: LazyLock<Regex> =
-//     LazyLock::new(|| Regex::new(r#"(\S+) *(deg|grad|rad|turn)"#).unwrap());
-
-// // angle of 0. is down
+// angle of 0. is down
 
 fn float_parser<'a>() -> impl Parser<'a, &'a str, f32> {
     let digits = digits(10).to_slice();
@@ -33,8 +29,6 @@ fn percentage<'a>() -> impl Parser<'a, &'a str, u8> {
         .boxed()
 }
 
-// fn uncased_keyword(keyword: &str) -> impl Parser<'a
-
 fn named_color_parser<'a>() -> impl Parser<'a, &'a str, Color> {
     let uncased = |keyword: &'static str, color| {
         ident::<&str, _>()
@@ -47,38 +41,9 @@ fn named_color_parser<'a>() -> impl Parser<'a, &'a str, Color> {
         uncased("red", Color::RED),
         uncased("green", Color::GREEN),
         uncased("blue", Color::BLUE),
+        // TODO: more cases
     ))
 }
-
-// pub fn parse_angle(input: &str) -> Option<f32> {
-//     let angle = if let Some(captures) = ANGLE.captures(input) {
-//         let num = captures.get(1).unwrap().as_str().parse::<f32>().ok()?;
-
-//         match captures.get(2).unwrap().as_str() {
-//             "deg" => num,
-//             "grad" => num.atan() * (180. / PI),
-//             "rad" => num * (180. / PI),
-//             "turn" => num * 360.,
-//             _ => unreachable!(),
-//         }
-//     } else {
-//         let direction = input.strip_prefix("to ")?.trim();
-
-//         match direction {
-//             "bottom" => 0.,
-//             "bottom left" => 45.,
-//             "left" => 90.,
-//             "top left" => 135.,
-//             "top" => 180.,
-//             "top right" => 225.,
-//             "right" => 270.,
-//             "bottom right" => 315.,
-//             _ => return None
-//         }
-//     };
-
-//     Some(angle)
-// }
 
 fn direction_parser<'a>() -> impl Parser<'a, &'a str, f32> {
     let primary = choice((keyword("top"), keyword("bottom")))
@@ -131,40 +96,6 @@ fn base_angle_parser<'a>() -> impl Parser<'a, &'a str, f32> {
 fn angle_parser<'a>() -> impl Parser<'a, &'a str, f32> {
     direction_parser().or(base_angle_parser())
 }
-
-// pub fn parse_hex(input: &str) -> Option<Color> {
-//     let hex = input.strip_prefix('#')?;
-
-//     let (r, g, b, a) = match hex.len() {
-//         3 => (
-//             u8::from_str_radix(&hex[0..1], 16).ok()?,
-//             u8::from_str_radix(&hex[1..2], 16).ok()?,
-//             u8::from_str_radix(&hex[2..3], 16).ok()?,
-//             0xFF,
-//         ),
-//         4 => (
-//             u8::from_str_radix(&hex[0..1], 16).ok()?,
-//             u8::from_str_radix(&hex[1..2], 16).ok()?,
-//             u8::from_str_radix(&hex[2..3], 16).ok()?,
-//             u8::from_str_radix(&hex[3..4], 16).ok()?,
-//         ),
-//         6 => (
-//             u8::from_str_radix(&hex[0..2], 16).ok()?,
-//             u8::from_str_radix(&hex[2..4], 16).ok()?,
-//             u8::from_str_radix(&hex[4..6], 16).ok()?,
-//             0xFF,
-//         ),
-//         8 => (
-//             u8::from_str_radix(&hex[0..2], 16).ok()?,
-//             u8::from_str_radix(&hex[2..4], 16).ok()?,
-//             u8::from_str_radix(&hex[4..6], 16).ok()?,
-//             u8::from_str_radix(&hex[6..8], 16).ok()?,
-//         ),
-//         _ => return None,
-//     };
-
-//     Some(Color::from_argb(a, r, g, b))
-// }
 
 fn hex_parser<'a>() -> impl Parser<'a, &'a str, Color> {
     just('#')
@@ -239,28 +170,6 @@ fn rgb_parser<'a>() -> impl Parser<'a, &'a str, Color> {
         .ignore_then(inner.padded().delimited_by(just('('), just(')')))
 }
 
-// pub fn parse_stop(input: &str) -> Option<(Color, Option<f32>)> {
-//     let (color, len) = if input.starts_with('#') {
-//         let color = parse_hex(input)?;
-
-//         let len = input.split_whitespace().next().unwrap().len();
-
-//         (color, len)
-//     } else {
-//         todo!()
-//     };
-
-//     let stop_length = input[len..].trim().split_whitespace().next().unwrap();
-
-//     let offset = if stop_length.len() != 0 && let Some(percentage) = stop_length.strip_suffix('%') {
-//         percentage.parse().ok()
-//     } else {
-//         None
-//     };
-
-//     Some((color, offset))
-// }
-
 fn inner_color_parser<'a>() -> impl Parser<'a, &'a str, Color> {
     choice((named_color_parser(), hex_parser(), rgb_parser()))
 }
@@ -274,25 +183,7 @@ fn stop_parser<'a>() -> impl Parser<'a, &'a str, (Color, Option<f32>)> {
     )
 }
 
-// pub fn parse_linear_gradient(input: &str) -> Option<LinearGradient> {
-//     let inner = input.strip_prefix("linear-gradient(")?.strip_suffix(')')?;
-
-//     let mut parts = inner.split(',');
-
-//     let mut gradient = LinearGradient::new();
-
-//     let first = parts.next()?;
-
-//     if let Some(angle) = parse_angle(first) {
-//         gradient = gradient.angle(angle);
-//     } else {
-//         todo!()
-//     }
-
-//     Some(gradient)
-// }
-
-pub fn linear_gradient_parser<'a>() -> impl Parser<'a, &'a str, LinearGradient> {
+fn linear_gradient_parser<'a>() -> impl Parser<'a, &'a str, LinearGradient> {
     let angle = angle_parser().padded().then_ignore(just(','));
     let stops = stop_parser()
         .padded()
@@ -302,15 +193,12 @@ pub fn linear_gradient_parser<'a>() -> impl Parser<'a, &'a str, LinearGradient> 
 
     just("linear-gradient")
         .ignore_then(
-            // just('(').ignore_then(stops.padded()).then_ignore(just(')'))
-            // stops
             angle
                 .or_not()
                 .then(stops)
                 .delimited_by(just('('), just(')'))
         )
         .map(|(angle, stops)| {
-        // .map(|stops| { let angle = None;
             let mut gradient = LinearGradient::new().angle(angle.unwrap_or(0.));
 
             if stops.iter().all(|(_, p)| p.is_some()) {
@@ -329,30 +217,6 @@ pub fn linear_gradient_parser<'a>() -> impl Parser<'a, &'a str, LinearGradient> 
         })
         .boxed()
 }
-
-// pub fn parse_radial_gradient(input: &str) -> Option<LinearGradient> {
-//     None
-// }
-
-// pub fn parse_conic_gradient(input: &str) -> Option<LinearGradient> {
-//     None
-// }
-
-// pub fn parse_fill(input: &str) -> Option<Fill> {
-//     let input = input.trim();
-
-//     if let Some(color) = parse_hex(input) {
-//         Some(Fill::Color(color))
-//     } else if let Some(gradient) = parse_linear_gradient(input) {
-//         Some(Fill::LinearGradient(Box::new(gradient)))
-//     } else if let Some(gradient) = parse_radial_gradient(input) {
-//         Some(Fill::LinearGradient(Box::new(gradient)))
-//     } else if let Some(gradient) = parse_conic_gradient(input) {
-//         Some(Fill::LinearGradient(Box::new(gradient)))
-//     } else {
-//         None
-//     }
-// }
 
 fn fill_parser<'a>() -> impl Parser<'a, &'a str, Fill> {
     choice((

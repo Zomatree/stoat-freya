@@ -45,7 +45,7 @@ pub async fn run(
     let http = http();
 
     let uri = format!(
-        "{}/?token={}&format=json&ready=users&ready=servers&ready=channels&ready=members&ready=channel_unreads",
+        "{}/?token={}&format=json&ready=users&ready=servers&ready=channels&ready=members&ready=channel_unreads&ready=emojis",
         &http.api_config.ws,
         http.token.read().unwrap().clone().expect("No token")
     );

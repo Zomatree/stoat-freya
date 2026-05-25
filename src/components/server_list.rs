@@ -9,8 +9,11 @@ use stoat_models::v0;
 
 use crate::{
     AppChannel, Selection, SettingsPage,
-    components::{CurrentUserButton, HomeButton, ServerListButton, StoatButton},
-    map_readable,
+    components::{
+        CurrentUserButton, HomeButton, ServerListButton, StoatButton,
+        StoatButtonLayoutThemePartialExt, StoatTooltip,
+    },
+    map_readable, use_material_theme,
 };
 
 #[derive(PartialEq)]
@@ -19,7 +22,7 @@ pub struct ServerList {}
 impl Component for ServerList {
     fn render(&self) -> impl IntoElement {
         let mut radio = use_radio(AppChannel::Servers);
-        let mut hovered = use_state(|| false);
+        let theme = use_material_theme();
 
         let order_settings = radio.slice(AppChannel::Settings("ordering"), |state| {
             &state.settings.ordering
@@ -80,9 +83,10 @@ impl Component for ServerList {
                 order
                     .into_iter()
                     .map(|id| {
-                        map_readable::<HashMap<String, v0::Server>, _>(readable.clone(), move |servers| {
-                            servers.get(&id).unwrap()
-                        })
+                        map_readable::<HashMap<String, v0::Server>, _>(
+                            readable.clone(),
+                            move |servers| servers.get(&id).unwrap(),
+                        )
                     })
                     .collect::<Vec<_>>()
             }
@@ -104,7 +108,7 @@ impl Component for ServerList {
                                     .height(Size::px(1.))
                                     .width(Size::px(32.))
                                     .margin((6., 0.))
-                                    .background(0xff45464f),
+                                    .background(theme.md.outline_variant.as_argb_u32()),
                             )
                             .child(
                                 rect()
@@ -118,26 +122,42 @@ impl Component for ServerList {
                                     ),
                             )
                             .child(
-                                StoatButton::new()
-                                    .child(
-                                        rect()
-                                            .center()
-                                            .width(Size::px(42.0))
-                                            .height(Size::px(42.0))
-                                            .corner_radius(42.)
-                                            .overflow(Overflow::Clip)
-                                            .background(0xff1b1b21)
-                                            .color(0xffe3e1e9)
-                                            .child(
-                                                svg(compass())
-                                                    .width(Size::px(32.0))
-                                                    .height(Size::px(32.0)),
-                                            ),
-                                    )
-                                    .on_press(move |_| {
-                                        radio.write_channel(AppChannel::Selection).selection =
-                                            Selection::Discover;
-                                    }),
+                                StoatTooltip::new(
+                                    label().max_lines(1).font_size(11.).text("Find new servers to join"),
+                                )
+                                .position(AttachedPosition::Right)
+                                .child(
+                                    rect()
+                                        .width(Size::px(56.))
+                                        .height(Size::px(56.))
+                                        .center()
+                                        .child(
+                                            StoatButton::new()
+                                                .corner_radius(42.)
+                                                .child(
+                                                    rect()
+                                                        .center()
+                                                        .width(Size::px(42.0))
+                                                        .height(Size::px(42.0))
+                                                        .background(
+                                                            theme
+                                                                .md
+                                                                .surface_container_low
+                                                                .as_argb_u32(),
+                                                        )
+                                                        .child(
+                                                            svg(compass())
+                                                                .width(Size::px(32.0))
+                                                                .height(Size::px(32.0)),
+                                                        ),
+                                                )
+                                                .on_press(move |_| {
+                                                    radio
+                                                        .write_channel(AppChannel::Selection)
+                                                        .selection = Selection::Discover;
+                                                }),
+                                        ),
+                                ),
                             ),
                     )
                     .show_scrollbar(false)
@@ -145,38 +165,34 @@ impl Component for ServerList {
                     .height(Size::func(|size| Some(size.parent - 56.))),
             )
             .child(
-                rect()
-                    .width(Size::px(56.))
-                    .height(Size::px(56.))
-                    .center()
-                    .child(
-                        StoatButton::new()
-                            .child(
-                                rect()
-                                    .center()
-                                    .width(Size::px(42.0))
-                                    .height(Size::px(42.0))
-                                    .corner_radius(42.)
-                                    .overflow(Overflow::Clip)
-                                    .background(0xff1b1b21)
-                                    .color(0xffe3e1e9)
-                                    .child(
-                                        svg(settings())
-                                            .width(Size::px(32.0))
-                                            .height(Size::px(32.0)),
-                                    ),
-                            )
-                            .on_press(move |_| {
-                                radio.write_channel(AppChannel::SettingsPage).settings_page =
-                                    Some(SettingsPage::default());
-                            }),
-                    ),
+                StoatTooltip::new(label().max_lines(1).font_size(11.).text("Settings")).position(AttachedPosition::Right).child(
+                    rect()
+                        .width(Size::px(56.))
+                        .height(Size::px(56.))
+                        .center()
+                        .child(
+                            StoatButton::new()
+                                .corner_radius(42.)
+                                .child(
+                                    rect()
+                                        .center()
+                                        .width(Size::px(42.0))
+                                        .height(Size::px(42.0))
+                                        .overflow(Overflow::Clip)
+                                        .background(theme.md.surface_container_low.as_argb_u32())
+                                        .child(
+                                            svg(settings())
+                                                .width(Size::px(32.0))
+                                                .height(Size::px(32.0)),
+                                        ),
+                                )
+                                .on_press(move |_| {
+
+                                    radio.write_channel(AppChannel::SettingsPage).settings_page =
+                                        Some(SettingsPage::default());
+                                }),
+                        ),
+                ),
             )
-            .on_pointer_enter(move |_| {
-                hovered.set(true);
-            })
-            .on_pointer_leave(move |_| {
-                hovered.set(false);
-            })
     }
 }

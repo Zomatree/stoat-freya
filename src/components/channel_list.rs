@@ -56,7 +56,7 @@ impl Component for ChannelList {
                 .cross_align(Alignment::Center)
                 .color(0xff90909a)
                 .child(
-                    rect().padding((4., 0.)).children(
+                    rect().padding((4., 8.)).children(
                         non_category_channels
                             .read()
                             .iter()
@@ -75,7 +75,7 @@ impl Component for ChannelList {
                     ),
                 )
                 .child(
-                    rect().padding((4., 0.)).spacing(8.).children(
+                    rect().padding((4., 8.)).spacing(8.).children(
                             self.server.read().categories.iter().flatten()
                             .filter(|cat| !cat.channels.is_empty() && cat.id != "default")
                             .map(|cat| {

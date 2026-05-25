@@ -67,7 +67,7 @@ impl Component for Floating {
                         mouse_pos.y as f32 - area.size.height + 16.
                     } else {
                         mouse_pos.y as f32 - 16.
-                    }.max(16.);
+                    }.max(16.).min(window_size.height as f32 - area.size.height - 65.);
 
                     pos.set((x, y));
                 });

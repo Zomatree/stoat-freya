@@ -1,64 +1,59 @@
-use std::collections::HashMap;
-
 use freya::{
-    icons::lucide::{circle_x, file_text, plus},
+    icons::lucide::{circle_x, eye, eye_off, file_text, plus},
     prelude::*,
 };
-use rfd::AsyncFileDialog;
+
+use crate::{
+    components::{
+        Attachment, AttachmentController, StoatButton, StoatButtonColorsThemePartialExt,
+        StoatButtonLayoutThemePartialExt,
+    },
+    use_material_theme,
+};
 
 #[derive(PartialEq)]
 pub struct MessageAttachmentsPreview {
-    pub attachments: State<HashMap<u64, (String, Bytes)>>,
+    pub attachments: AttachmentController,
 }
 
 impl Component for MessageAttachmentsPreview {
     fn render(&self) -> impl IntoElement {
+        let theme = use_material_theme();
+
         rect()
             .horizontal()
             .padding(8.)
             .corner_radius(16.)
-            .background(0xff384379)
+            .background(theme.md.primary_container.as_argb_u32())
             .width(Size::Fill)
             .child(
                 ScrollView::new()
                     .height(Size::px(130.))
                     .spacing(8.)
                     .direction(Direction::Horizontal)
-                    .children(self.attachments.read().keys().copied().map(|key| {
-                        MessageAttachmentPreview {
-                            attachments: self.attachments.clone(),
-                            key,
-                        }
-                        .into_element()
-                    }))
+                    .children(
+                        self.attachments.get_attachments().map(|attachment| {
+                            MessageAttachmentPreview { attachment }.into_element()
+                        }),
+                    )
                     .child(
-                        Button::new()
-                            .color(0xffdde1ff)
-                            .width(Size::px(100.))
-                            .height(Size::px(100.))
-                            .hover_background(0x20e3e1e9)
-                            .background(Color::TRANSPARENT)
-                            .border_fill(Color::TRANSPARENT)
+                        StoatButton::new()
                             .corner_radius(8.)
-                            .flat()
+                            .color(theme.md.on_primary_container.as_argb_u32())
                             .on_press({
-                                let mut attachments = self.attachments.clone();
+                                let attachments = self.attachments.clone();
 
                                 move |_| {
-                                    spawn(async move {
-                                        if let Some(file) = AsyncFileDialog::new().pick_file().await
-                                        {
-                                            let contents = file.read().await.into();
-                                            let filename = file.file_name();
-
-                                            attachments
-                                                .write()
-                                                .insert(rand::random(), (filename, contents));
-                                        };
-                                    });
+                                    spawn(async move { attachments.prompt().await });
                                 }
                             })
-                            .child(svg(plus()).width(Size::px(48.)).height(Size::px(48.))),
+                            .child(
+                                rect()
+                                    .width(Size::px(100.))
+                                    .height(Size::px(100.))
+                                    .center()
+                                    .child(svg(plus()).width(Size::px(48.)).height(Size::px(48.))),
+                            ),
                     ),
             )
     }
@@ -66,21 +61,19 @@ impl Component for MessageAttachmentsPreview {
 
 #[derive(PartialEq)]
 pub struct MessageAttachmentPreview {
-    pub attachments: State<HashMap<u64, (String, Bytes)>>,
-    pub key: u64,
+    pub attachment: Attachment,
 }
 
 impl Component for MessageAttachmentPreview {
     fn render(&self) -> impl IntoElement {
-        let (filename, contents) = self.attachments.read().get(&self.key).unwrap().clone();
-
-        let is_image = use_hook(|| infer::is_image(&contents));
+        let is_image = use_hook(|| infer::is_image(&self.attachment.contents));
         let mut hovering = use_state(|| false);
         let area = use_state(Area::default);
+        let theme = use_material_theme();
 
         rect()
             .cross_align(Alignment::Center)
-            .color(0xffdde1ff)
+            .color(theme.md.on_primary_container.as_argb_u32())
             .child(
                 Button::new()
                     .flat()
@@ -90,11 +83,10 @@ impl Component for MessageAttachmentPreview {
                     .border_fill(Color::TRANSPARENT)
                     .padding(0.)
                     .on_press({
-                        let mut attachments = self.attachments.clone();
-                        let key = self.key.clone();
+                        let attachment = self.attachment.clone();
 
                         move |_| {
-                            attachments.write().remove(&key);
+                            attachment.remove();
                         }
                     })
                     .corner_radius(8.)
@@ -109,8 +101,8 @@ impl Component for MessageAttachmentPreview {
                                 rect()
                                     .child(if is_image {
                                         ImageViewer::new(ImageSource::Bytes(
-                                            self.key,
-                                            contents.clone(),
+                                            self.attachment.id,
+                                            self.attachment.contents.clone(),
                                         ))
                                         .into_element()
                                     } else {
@@ -135,7 +127,7 @@ impl Component for MessageAttachmentPreview {
                                     .position(Position::new_absolute())
                                     .width(Size::px(area.read().width()))
                                     .height(Size::px(100.))
-                                    .layer(Layer::RelativeOverlay(1))
+                                    .layer(Layer::Relative(1))
                                     .background(0xcc000000)
                                     .center()
                                     .child(
@@ -144,12 +136,47 @@ impl Component for MessageAttachmentPreview {
                                             .height(Size::px(36.))
                                             .color(Color::WHITE),
                                     )
+                                    .child(
+                                        rect()
+                                            .position(Position::new_absolute().right(4.).top(4.))
+                                            .layer(Layer::Relative(1))
+                                            .child(
+                                                StoatButton::new()
+                                                    .corner_radius(4.)
+                                                    .child(
+                                                        rect()
+                                                            .background(
+                                                                theme
+                                                                    .md
+                                                                    .secondary_container
+                                                                    .as_argb_u32(),
+                                                            )
+                                                            .padding(4.)
+
+                                                            .child(
+                                                                svg(if self.attachment.spoiler { eye_off() } else { eye() })
+                                                                    .width(Size::px(24.))
+                                                                    .height(Size::px(24.))
+                                                                    .color(
+                                                                        theme
+                                                                            .md
+                                                                            .on_secondary_container
+                                                                            .as_argb_u32(),
+                                                                    ),
+                                                            ),
+                                                    )
+                                                    .on_press({let attachment = self.attachment.clone(); move |e: Event<PressEventData>| {
+                                                        e.stop_propagation();
+                                                        attachment.toggle_spoiler();
+                                                    }})
+                                            ),
+                                    )
                             })),
                     ),
             )
             .child(
                 label()
-                    .text(filename)
+                    .text(self.attachment.filename.clone())
                     .max_lines(1)
                     .text_overflow(TextOverflow::Ellipsis)
                     .font_size(12)
@@ -157,12 +184,12 @@ impl Component for MessageAttachmentPreview {
             )
             .child(
                 label()
-                    .text(format!("{} KB", contents.len() / 1000))
+                    .text(format!("{} KB", self.attachment.contents.len() / 1000))
                     .font_size(11),
             )
     }
 
     fn render_key(&self) -> DiffKey {
-        (&self.key).into()
+        (&self.attachment.id).into()
     }
 }

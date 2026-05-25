@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use freya::{prelude::*, radio::use_radio};
+use freya::{animation::{AnimNum, AnimatedValue, Ease, Function, OnChange, OnCreation, use_animation}, prelude::*, radio::use_radio};
 use tokio::time::sleep;
 
 use crate::{
@@ -20,6 +20,26 @@ impl Component for Client {
         let user_profile = radio.slice_mut(AppChannel::UserProfile, |state| &mut state.user_profile);
 
         let show_connection_state_banner = use_state(|| false);
+
+        let show_settings = use_reactive(&settings.read().is_some());
+
+        let settings_animation = use_animation(move |conf| {
+            conf.on_change(OnChange::Rerun);
+            conf.on_creation(OnCreation::Finish);
+
+            let opacity = AnimNum::new(0., 1.)
+                .time(350)
+                .ease(Ease::Out)
+                .function(Function::Expo);
+
+            if show_settings() {
+                opacity
+            } else {
+                opacity.into_reversed()
+            }
+        });
+
+        let opacity = settings_animation.read().value();
 
         use_side_effect({
             let connection_state = connection_state.clone();
@@ -49,8 +69,6 @@ impl Component for Client {
         });
 
         rect()
-            .color(0xffe3e1e9)
-            .child(FloatingManager {})
             .child(
                 rect()
                     .direction(Direction::Horizontal)
@@ -70,12 +88,13 @@ impl Component for Client {
                         Selection::Home => Home {}.into_element(),
                     }),
             )
-            .maybe_child(settings.read().is_some().then(|| {
+            .maybe_child((opacity > 0.).then(|| {
                 rect()
                     .position(Position::new_global())
                     .width(Size::window_percent(100.))
                     .height(Size::window_percent(100.))
                     .layer(Layer::Overlay)
+                    .opacity(opacity)
                     .child(Settings {})
                     .into_element()
             }))
@@ -98,6 +117,7 @@ impl Component for Client {
                     .child(label().text(text).font_size(16.).color(color).font_weight(FontWeight::SEMI_BOLD))
                     .background(background)
             }))
+            .child(FloatingManager {})
             .maybe_child(user_profile.read().cloned().map(|user_id| {
                 let user = radio.slice(AppChannel::Users, move |state| state.users.get(&user_id).unwrap());
 

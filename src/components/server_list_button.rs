@@ -2,8 +2,9 @@ use freya::{prelude::*, radio::use_radio};
 use stoat_models::v0;
 
 use crate::{
-    AppChannel, Config, NotificationBadge, Selection, components::server_icon, get_unread_badge,
-    is_server_muted,
+    AppChannel, Config, NotificationBadge, Selection,
+    components::{StoatButton, StoatButtonLayoutThemePartialExt, StoatTooltip, server_icon},
+    get_unread_badge, is_server_muted, use_material_theme,
 };
 
 #[derive(PartialEq)]
@@ -15,6 +16,8 @@ impl Component for ServerListButton {
     fn render(&self) -> impl IntoElement {
         let config = use_consume::<State<Config>>();
         let mut radio = use_radio(AppChannel::Servers);
+        let theme = use_material_theme();
+        let mut hovering = use_state(|| false);
 
         let selection = radio.slice(AppChannel::Selection, |state| &state.selection);
         let notifications_settings = radio.slice(AppChannel::Settings("notifications"), |state| {
@@ -87,92 +90,114 @@ impl Component for ServerListButton {
 
         rect()
             .horizontal()
+            .on_pointer_over(move |_| {
+                hovering.set(true);
+            })
+            .on_pointer_out(move |_| hovering.set_if_modified(false))
             .maybe_child(
                 (*selected.read() || *badge.read() == Some(NotificationBadge::Unread)).then(|| {
                     rect()
                         .width(Size::px(12.))
                         .height(Size::px(if *selected.read() { 32. } else { 8. }))
-                        .layer(Layer::RelativeOverlay(1))
-                        .position(
-                            Position::new_absolute()
-                                .left(-8.)
-                                .top(if *selected.read() { 12. } else { 24. }),
-                        )
+                        .layer(Layer::Relative(1))
+                        .position(Position::new_absolute().left(-8.).top(if *selected.read() {
+                            12.
+                        } else {
+                            24.
+                        }))
                         .corner_radius(4.)
-                        .background(0xffe3e1e9)
+                        .background(theme.md.on_surface.as_argb_u32())
                 }),
             )
             .child(
-                rect().center().width(Size::px(56.0)).height(Size::px(56.0)).child(
+                StoatTooltip::new(label().max_lines(1).text(server.read().name.clone()))
+                .position(AttachedPosition::Right)
+                .child(
                     rect()
-                        .width(Size::px(42.0))
-                        .height(Size::px(42.0))
-                        .corner_radius(42.)
-                        .overflow(Overflow::Clip)
-                        .child(server_icon(&server.read()))
-                        .on_press({
-                            move |_| {
-                                radio.write_channel(AppChannel::Selection).selection =
-                                    Selection::Server(server.peek().id.clone());
+                        .center()
+                        .width(Size::px(56.0))
+                        .height(Size::px(56.0))
+                        .child(
+                            rect()
+                                .width(Size::px(42.0))
+                                .height(Size::px(42.0))
+                                .child(
+                                    StoatButton::new()
+                                        .corner_radius(42.)
+                                        .child(
+                                            rect()
+                                                .width(Size::px(42.0))
+                                                .height(Size::px(42.0))
+                                                // .overflow(Overflow::Clip)
+                                                .child(server_icon(&server.read(), &theme)),
+                                        )
+                                        .on_press({
+                                            move |_| {
+                                                radio
+                                                    .write_channel(AppChannel::Selection)
+                                                    .selection =
+                                                    Selection::Server(server.peek().id.clone());
 
-                                let channel_id = config
-                                    .read()
-                                    .last_channels
-                                    .get(&server.peek().id)
-                                    .cloned()
-                                    .or_else(|| {
-                                        let channels = radio
-                                            .slice(AppChannel::Channels, |state| &state.channels);
+                                                let channel_id = config
+                                                    .read()
+                                                    .last_channels
+                                                    .get(&server.peek().id)
+                                                    .cloned()
+                                                    .or_else(|| {
+                                                        let channels = radio
+                                                            .slice(AppChannel::Channels, |state| {
+                                                                &state.channels
+                                                            });
 
-                                        server
-                                            .read()
-                                            .channels
-                                            .iter()
-                                            .find(|&id| channels.read().contains_key(id))
-                                            .cloned()
-                                    });
+                                                        server
+                                                            .read()
+                                                            .channels
+                                                            .iter()
+                                                            .find(|&id| {
+                                                                channels.read().contains_key(id)
+                                                            })
+                                                            .cloned()
+                                                    });
 
-                                radio
-                                    .write_channel(AppChannel::SelectedChannel)
-                                    .selected_channel = channel_id;
-                            }
-                        })
-                        .on_pointer_enter(|_| {
-                            Cursor::set(CursorIcon::Pointer);
-                        })
-                        .on_pointer_leave(|_| {
-                            Cursor::set(CursorIcon::Default);
-                        }),
+                                                radio
+                                                    .write_channel(AppChannel::SelectedChannel)
+                                                    .selected_channel = channel_id;
+                                            }
+                                        }),
+                                )
+                                .maybe_child(
+                                    badge
+                                        .read()
+                                        .as_ref()
+                                        .and_then(|badge| {
+                                            if let NotificationBadge::Mentions(count) = badge {
+                                                Some(count)
+                                            } else {
+                                                None
+                                            }
+                                        })
+                                        .map(|count| {
+                                            rect()
+                                                .position(
+                                                    Position::new_absolute().right(0.).top(0.),
+                                                )
+                                                .layer(Layer::Relative(10))
+                                                .width(Size::px(13.))
+                                                .height(Size::px(13.))
+                                                .corner_radius(13.)
+                                                .center()
+                                                .background(theme.md.error.as_argb_u32())
+                                                .color(theme.md.on_error.as_argb_u32())
+                                                .font_size(10.)
+                                                .child(if *count <= 9 {
+                                                    count.to_string()
+                                                } else {
+                                                    "+".to_string()
+                                                })
+                                        }),
+                                ),
+                        ),
                 ),
-            )
-            .maybe_child(
-                badge
-                    .read()
-                    .as_ref()
-                    .and_then(|badge| {
-                        if let NotificationBadge::Mentions(count) = badge {
-                            Some(count)
-                        } else {
-                            None
-                        }
-                    })
-                    .map(|count| {
-                        rect()
-                            .position(Position::new_absolute().left(31.))
-                            .layer(Layer::Overlay)
-                            .width(Size::px(12.))
-                            .height(Size::px(12.))
-                            .corner_radius(12.)
-                            .center()
-                            .background(0xffffb4ab)
-                            .color(0xff690005)
-                            .font_size(10.)
-                            .child(if *count <= 9 {
-                                count.to_string()
-                            } else {
-                                "+".to_string()
-                            })
-                    }),
             )
     }
 
