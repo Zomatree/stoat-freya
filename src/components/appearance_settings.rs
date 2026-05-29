@@ -1,7 +1,7 @@
 use freya::{
     animation::{
         AnimNum, AnimatedValue, Ease, Function, OnChange, OnCreation, ReadAnimatedValue,
-        use_animation, use_animation_transition,
+        use_animation,
     },
     icons::lucide::palette,
     prelude::*,
@@ -48,7 +48,7 @@ impl Component for AppearanceSettings {
                         .into_element()
                     },
                 )
-                .height(Size::px(40.)),
+                .height(40.),
             )
             .child(
                 rect()
@@ -64,7 +64,6 @@ impl Component for AppearanceSettings {
                     ))
                     .child(
                         rect()
-                            // .width(Size::px(384.))
                             .child(StoatSegmentedButton::new(
                                 source,
                                 vec![
@@ -77,20 +76,9 @@ impl Component for AppearanceSettings {
                                     Color::new(0xff8c5fd3),
                                 ],
                                 |color| rect().expanded().background(color.clone()).into_element(),
-                            ).height(Size::px(56.))),
+                            ).height(56.)),
                     ),
             )
-
-        // rect()
-        //     .child(
-        //         StoatButton::new()
-        //             .child("Toggle theme")
-        //             .on_press(move |_| config.write().theme.scheme.toggle()),
-        //     )
-        // .child(ColorPicker::new(move |c: Color| {
-        //     config.write().theme.theme_source =
-        //         ((c.r() as u32) << 16) | ((c.g() as u32) << 8) | (c.b() as u32)
-        // }).value(Color::new(config.read().theme.theme_source | (0xFF << 24))))
     }
 }
 
@@ -361,7 +349,6 @@ impl Component for StoatColorPicker {
 
         rect()
             .horizontal()
-            .spacing(8.)
             .child(preview)
             .maybe_child((opacity > 0.).then(|| {
                 rect()
@@ -369,7 +356,7 @@ impl Component for StoatColorPicker {
                     .width(Size::px(0.))
                     .height(Size::px(0.))
                     .opacity(opacity)
-                    .child(rect().scale(scale).child(popup))
+                    .child(rect().scale(scale).child(popup).margin((0., 0., 0., 8.)))
             }))
     }
 

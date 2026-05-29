@@ -1,11 +1,12 @@
-use std::time::Duration;
+use std::{collections::HashMap, time::Duration};
 
 use freya::{animation::{AnimNum, AnimatedValue, Ease, Function, OnChange, OnCreation, use_animation}, prelude::*, radio::use_radio};
+use stoat_models::v0;
 use tokio::time::sleep;
 
 use crate::{
     AppChannel, ConnectionState, Selection,
-    components::{Discover, FloatingManager, Home, Server, ServerList, Settings, UserProfile},
+    components::{Discover, FloatingManager, Home, Server, ServerList, ServerSettings, Settings, UserProfile}, map_readable,
 };
 
 #[derive(PartialEq)]
@@ -16,6 +17,9 @@ impl Component for Client {
         let radio = use_radio(AppChannel::Selection);
         let selected = radio.slice_current(|state| &state.selection);
         let settings = radio.slice(AppChannel::SettingsPage, |state| &state.settings_page);
+
+        let servers = radio.slice(AppChannel::Servers, |state| &state.servers);
+        let server_settings = radio.slice(AppChannel::ServerSettingsPage, |state| &state.server_settings_page);
         let connection_state = radio.slice_mut(AppChannel::State, |state| &mut state.state);
         let user_profile = radio.slice_mut(AppChannel::UserProfile, |state| &mut state.user_profile);
 
@@ -39,7 +43,27 @@ impl Component for Client {
             }
         });
 
-        let opacity = settings_animation.read().value();
+        let settings_opacity = settings_animation.read().value();
+
+        let show_server_settings = use_reactive(&server_settings.read().is_some());
+
+        let server_settings_animation = use_animation(move |conf| {
+            conf.on_change(OnChange::Rerun);
+            conf.on_creation(OnCreation::Finish);
+
+            let opacity = AnimNum::new(0., 1.)
+                .time(350)
+                .ease(Ease::Out)
+                .function(Function::Expo);
+
+            if show_server_settings() {
+                opacity
+            } else {
+                opacity.into_reversed()
+            }
+        });
+
+        let server_settings_opacity = server_settings_animation.read().value();
 
         use_side_effect({
             let connection_state = connection_state.clone();
@@ -88,14 +112,27 @@ impl Component for Client {
                         Selection::Home => Home {}.into_element(),
                     }),
             )
-            .maybe_child((opacity > 0.).then(|| {
+            .maybe_child((settings_opacity > 0.).then(|| {
                 rect()
                     .position(Position::new_global())
                     .width(Size::window_percent(100.))
                     .height(Size::window_percent(100.))
                     .layer(Layer::Overlay)
-                    .opacity(opacity)
+                    .opacity(settings_opacity)
                     .child(Settings {})
+                    .into_element()
+            }))
+            .maybe_child(server_settings.read().as_ref().map(|(id, _)| id.clone()).filter(|_| server_settings_opacity > 0.).map(|server_id| {
+
+                rect()
+                    .position(Position::new_global())
+                    .width(Size::window_percent(100.))
+                    .height(Size::window_percent(100.))
+                    .layer(Layer::Overlay)
+                    .opacity(server_settings_opacity)
+                    .child(ServerSettings {
+                        server: map_readable::<HashMap<String, v0::Server>, _>(servers.into_readable(), move |servers| servers.get(&server_id).unwrap())
+                    })
                     .into_element()
             }))
             .maybe_child(show_connection_state_banner.read().then(|| {

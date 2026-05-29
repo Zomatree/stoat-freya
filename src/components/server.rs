@@ -1,11 +1,11 @@
 use std::ops::Not;
 
-use freya::{prelude::*, radio::use_radio};
+use freya::{icons::lucide::settings, prelude::*, radio::use_radio};
 use stoat_models::v0;
 
 use crate::{
-    AppChannel,
-    components::{Channel, ChannelList, image},
+    AppChannel, ServerSettingsPage,
+    components::{Channel, ChannelList, StoatButton, StoatButtonLayoutThemePartialExt, image},
     use_config, use_material_theme,
 };
 
@@ -22,6 +22,40 @@ impl Component for Server {
 
         let selected_channel = radio.slice_current(|state| &state.selected_channel);
         let channels = radio.slice(AppChannel::Channels, |state| &state.channels);
+        let server_settings = radio.slice_mut(AppChannel::ServerSettingsPage, |state| {
+            &mut state.server_settings_page
+        });
+
+        let server_header = rect()
+            .horizontal()
+            .content(Content::Flex)
+            .cross_align(Alignment::Center)
+            .spacing(8.)
+            .child(
+                label()
+                    .font_size(16)
+                    .text(self.server.read().name.clone())
+                    .width(Size::flex(1.)),
+            )
+            .child(
+                StoatButton::new()
+                    .corner_radius(16.)
+                    .on_press({
+                        let server = self.server.clone();
+                        move |_| {
+                            let id = server.peek().id.clone();
+
+                            *server_settings.clone().write() =
+                                Some((id, ServerSettingsPage::default()));
+                        }
+                    })
+                    .child(
+                        rect()
+                            .padding(4.)
+                            .child(svg(settings()).width(Size::px(24.)).height(Size::px(24.))),
+                    ),
+            )
+            .into_element();
 
         rect()
             .corner_radius(CornerRadius {
@@ -49,8 +83,8 @@ impl Component for Server {
                                     rect()
                                         .width(Size::Fill)
                                         .position(Position::new_absolute().bottom(0.))
-                                        .layer(Layer::RelativeOverlay(1))
-                                        .padding((8., 14.))
+                                        .layer(Layer::Relative(1))
+                                        .padding((6., 14.))
                                         .background_linear_gradient(
                                             LinearGradient::new()
                                                 .stop((Color::TRANSPARENT, 0.))
@@ -64,27 +98,10 @@ impl Component for Server {
                                             smoothing: 0.,
                                         })
                                         .overflow(Overflow::Clip)
-                                        .child(
-                                            label()
-                                                .font_size(16)
-                                                .text(self.server.read().name.clone()),
-                                        ),
+                                        .child(server_header.clone()),
                                 )
                         } else {
-                            rect()
-                                .padding((0., 16.0, 0., 16.))
-                                .height(Size::px(48.))
-                                .main_align(Alignment::Center)
-                                .child(
-                                    rect()
-                                        .child(
-                                            label()
-                                                .font_size(16)
-                                                .text(self.server.read().name.clone()),
-                                        )
-                                        .main_align(Alignment::Center)
-                                        .min_height(Size::px(36.)),
-                                )
+                            rect().padding((0., 16.)).height(Size::px(48.)).center().child(server_header)
                         },
                     ))
                     .child(ChannelList {

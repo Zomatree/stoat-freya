@@ -13,7 +13,7 @@ use crate::{
     AppChannel,
     components::{
         ChannelMessages, HideSidebarHeader, MemberList, MessageAttachmentsPreview, MessageModel,
-        MessageReplyPreview, StoatButton, StoatButtonLayoutThemePartialExt, Textbox,
+        MessageReplyPreview, StoatButton, StoatButtonLayoutThemePartialExt, StoatTooltip, Textbox,
     },
     map_readable, use_config, use_material_theme,
 };
@@ -167,9 +167,7 @@ impl AttachmentController {
                 contents,
             };
 
-            self.0.clone()
-                .write()
-                .insert(id, attachment);
+            self.0.clone().write().insert(id, attachment);
         };
     }
 }
@@ -241,36 +239,51 @@ impl Component for Channel {
                     )
                     .child(rect().width(Size::flex(1.)))
                     .child(
-                        StoatButton::new()
-                            .corner_radius(40.)
-                            .on_press(move |_| {})
-                            .child(
-                                rect()
-                                    .horizontal()
-                                    .height(Size::px(40.))
-                                    .padding((0., 8.))
-                                    .center()
-                                    .color(theme.md.on_surface_variant.as_argb_u32())
-                                    .child(svg(pin()).width(Size::px(24.)).height(Size::px(24.))),
-                            ),
+                        StoatTooltip::new(
+                            label()
+                                .font_size(11.)
+                                .max_lines(1)
+                                .text("View pinned messages"),
+                        )
+                        .position(AttachedPosition::Bottom)
+                        .child(
+                            StoatButton::new()
+                                .corner_radius(40.)
+                                .on_press(move |_| {})
+                                .child(
+                                    rect()
+                                        .horizontal()
+                                        .height(Size::px(40.))
+                                        .padding((0., 8.))
+                                        .center()
+                                        .color(theme.md.on_surface_variant.as_argb_u32())
+                                        .child(
+                                            svg(pin()).width(Size::px(24.)).height(Size::px(24.)),
+                                        ),
+                                ),
+                        ),
                     )
                     .child(
-                        StoatButton::new()
-                            .corner_radius(40.)
-                            .on_press(move |_| {
-                                config.write().hide_members_list = !hide_members_list
-                            })
+                        StoatTooltip::new(label().font_size(11.).max_lines(1).text("View members"))
+                            .position(AttachedPosition::Bottom)
                             .child(
-                                rect()
-                                    .horizontal()
-                                    .height(Size::px(40.))
-                                    .padding((0., 8.))
-                                    .center()
-                                    .color(theme.md.on_surface_variant.as_argb_u32())
+                                StoatButton::new()
+                                    .corner_radius(40.)
+                                    .on_press(move |_| {
+                                        config.write().hide_members_list = !hide_members_list
+                                    })
                                     .child(
-                                        svg(users_round())
-                                            .width(Size::px(24.))
-                                            .height(Size::px(24.)),
+                                        rect()
+                                            .horizontal()
+                                            .height(Size::px(40.))
+                                            .padding((0., 8.))
+                                            .center()
+                                            .color(theme.md.on_surface_variant.as_argb_u32())
+                                            .child(
+                                                svg(users_round())
+                                                    .width(Size::px(24.))
+                                                    .height(Size::px(24.)),
+                                            ),
                                     ),
                             ),
                     )

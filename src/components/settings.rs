@@ -60,13 +60,6 @@ impl Component for Settings {
                     .overflow(Overflow::Clip)
                     .background(theme.md.surface_container_highest.as_argb_u32())
                     .horizontal()
-                    // .width(Size::func(move |size| {
-                    //     if !fullscreen {
-                    //         Some((size.parent * 0.8).max(size.parent - 400.).min(size.parent))
-                    //     } else {
-                    //         Some(size.parent)
-                    //     }
-                    // }))
                     .height(Size::func_data(
                         move |size| {
                             if !fullscreen {

@@ -100,18 +100,11 @@ impl Component for StoatButton {
             "stoat_button_layout"
         );
 
-        // let background = if hovering() && theme_colors.hover_background != Color::TRANSPARENT {
-        //     theme_colors.hover_background
-        // } else {
-        //     theme_colors.background
-        // };
-
         let color = if theme_colors.color == Color::TRANSPARENT {
             theme.md.on_surface.as_argb_u32().into()
         } else {
             theme_colors.color
         };
-
 
         rect()
             .overflow(Overflow::Clip)

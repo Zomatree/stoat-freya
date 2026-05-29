@@ -11,11 +11,17 @@ pub struct Root {}
 
 impl Component for Root {
     fn render(&self) -> impl IntoElement {
-        let config = use_consume::<State<Config>>();
+        let mut config = use_consume::<State<Config>>();
+
+        let token = use_reactive(&config.read().token);
 
         use_side_effect(move || {
-            let config = config.read();
-            *http().token.write().unwrap() = config.token.clone();
+            {
+                let token = token.read();
+                *http().token.write().unwrap() = token.clone();
+            };
+
+            config.write();
         });
 
         if config.read().token.is_some() && http().token.read().unwrap().is_some() {

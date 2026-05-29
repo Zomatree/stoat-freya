@@ -1,8 +1,7 @@
 use bytes::Bytes;
 use freya::{
     icons::lucide::{
-        banknote, bot_message_square, circle_user_round, cpu, flask_conical, globe,
-        message_square_diff, mic, palette, shield_check,
+        banknote, bot_message_square, circle_user_round, cpu, flag, flask_conical, globe, info, mail, message_square_diff, mic, palette, shield_check, smile, user_x
     },
     prelude::State,
     radio::{RadioChannel, RadioStation},
@@ -84,6 +83,38 @@ impl SettingsPage {
             SettingsPage::SourceCode => cpu(),
             SettingsPage::Advanced => flask_conical(),
             SettingsPage::Donate => banknote(),
+        }
+    }
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
+pub enum ServerSettingsPage {
+    #[default]
+    Overview,
+    Emojis,
+    Roles,
+    Invites,
+    Bans,
+}
+
+impl ServerSettingsPage {
+    pub fn title(&self) -> &'static str {
+        match self {
+            ServerSettingsPage::Overview => "Overview",
+            ServerSettingsPage::Emojis => "Emojis",
+            ServerSettingsPage::Roles => "Roles",
+            ServerSettingsPage::Invites => "Invites",
+            ServerSettingsPage::Bans => "Bans",
+        }
+    }
+
+    pub fn icon(&self) -> Bytes {
+        match self {
+            ServerSettingsPage::Overview => info(),
+            ServerSettingsPage::Emojis => smile(),
+            ServerSettingsPage::Roles => flag(),
+            ServerSettingsPage::Invites => mail(),
+            ServerSettingsPage::Bans => user_x(),
         }
     }
 }
@@ -196,6 +227,7 @@ pub struct AppState {
     pub settings: Settings,
     pub message_handlers: Option<MessageHandlers>,
     pub editing_message: Option<EditingMessage>,
+    pub server_settings_page: Option<(String, ServerSettingsPage)>,
 }
 
 impl AppState {
@@ -242,6 +274,7 @@ pub enum AppChannel {
     ChannelMessageCache,
     SettingsPage,
     Settings(&'static str),
+    ServerSettingsPage,
     UserProfile,
     MessageHandlers,
     EditingMessage,

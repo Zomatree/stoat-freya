@@ -1,12 +1,17 @@
-use std::borrow::Cow;
-
 use freya::{
     icons::lucide::{moon, x},
     prelude::*,
 };
 
 use crate::{
-    Config, components::{StoatButton, StoatButtonColorsThemePartialExt, StoatButtonLayoutThemePartialExt}, http, theme::Theme, types::{DataLogin, MFAResponse, ResponseLogin}, use_material_theme
+    Config,
+    components::{
+        SingleLineEntry, StoatButton, StoatButtonColorsThemePartialExt,
+        StoatButtonLayoutThemePartialExt,
+    },
+    http,
+    types::{DataLogin, MFAResponse, ResponseLogin},
+    use_material_theme,
 };
 
 #[derive(PartialEq)]
@@ -80,17 +85,22 @@ impl Component for Login {
                                     .spacing(15.)
                                     .cross_align(Alignment::Center)
                                     .child(
-                                        login_entry(email, "Email", &theme, InputMode::Shown)
+                                        // login_entry(email, "Email", &theme, InputMode::Shown)
+                                        SingleLineEntry::new("Email", email)
+                                            .placeholder("Please enter your email.")
                                             .width(Size::px(280.)),
                                     )
                                     .child(
-                                        login_entry(
-                                            password,
-                                            "Password",
-                                            &theme,
-                                            InputMode::Hidden('•'),
-                                        )
-                                        .width(Size::px(280.)),
+                                        // login_entry(
+                                        //     password,
+                                        //     "Password",
+                                        //     &theme,
+                                        //     InputMode::Hidden('•'),
+                                        // )
+                                        SingleLineEntry::new("Password", password)
+                                            .placeholder("Enter your current password.")
+                                            .mode(InputMode::Hidden('•'))
+                                            .width(Size::px(280.)),
                                     ),
                             )
                             .child(
@@ -202,41 +212,59 @@ impl Component for Login {
                             )
                             .maybe_child(error.read().clone()),
                     )
-                    .child(rect().height(Size::px(32.)).width(Size::Fill).color(theme.md.on_surface_variant.as_argb_u32()).child("Developed by Zomatree"))
+                    .child(
+                        rect()
+                            .height(Size::px(32.))
+                            .width(Size::Fill)
+                            .color(theme.md.on_surface_variant.as_argb_u32())
+                            .child("Developed by Zomatree"),
+                    ),
             )
             .maybe_child(mfa_ticket.read().cloned().map(|ticket| {
                 Popup::new()
-                    .background(0xff292a2f)
-                    .color(0xffe3e1e9)
+                    .background(theme.md.surface_container_high.as_argb_u32())
+                    .color(theme.md.on_surface.as_argb_u32())
                     .width(Size::px(370.))
                     .on_close_request(move |_| {
                         mfa_ticket.set(None);
                         mfa_value.set(String::new());
                         mfa_error.set(None);
                     })
-                    .child(PopupTitle::new("Confirm action".to_string()))
                     .child(
-                        PopupContent::new()
-                            .child("Please confirm this action using the selected method.")
-                            .child(login_entry(
-                                mfa_value,
-                                "Authenticator App",
-                                &theme,
-                                InputMode::Shown,
-                            ))
+                        rect().font_size(24.).padding(8.).child(
+                            label()
+                                .a11y_role(AccessibilityRole::TitleBar)
+                                .width(Size::fill())
+                                .text("Confirm action"),
+                        ),
+                    )
+                    .child(
+                        rect()
+                            .spacing(8.)
+                            .padding(8.)
+                            .child(label().font_size(14.).color(theme.md.on_surface_variant.as_argb_u32()).text("Please confirm this action using the selected method."))
+                            // .child(login_entry(
+                            //     mfa_value,
+                            //     "Authenticator App",
+                            //     &theme,
+                            //     InputMode::Shown,
+                            // ))
+                            .child(SingleLineEntry::new("Authenticator App", mfa_value))
                             .maybe_child(mfa_error.read().clone()),
                     )
                     .child(
                         PopupButtons::new()
                             .child(
-                                Button::new()
-                                    .child("Back")
-                                    .color(0xffb9c3ff)
-                                    .height(Size::px(40.))
-                                    .padding((0., 16.))
+                                StoatButton::new()
                                     .corner_radius(40.)
-                                    .hover_background(0x20e3e1e9)
-                                    .flat()
+                                    .child(
+                                        rect()
+                                            .center()
+                                            .color(theme.md.primary.as_argb_u32())
+                                            .child("Back")
+                                            .height(Size::px(40.))
+                                            .padding((0., 16.)),
+                                    )
                                     .on_press(move |_| {
                                         mfa_ticket.set(None);
                                         mfa_value.set(String::new());
@@ -244,14 +272,16 @@ impl Component for Login {
                                     }),
                             )
                             .child(
-                                Button::new()
-                                    .child("Confirm")
-                                    .height(Size::px(40.))
-                                    .padding((0., 16.))
-                                    .flat()
-                                    .background(0xffb9c3ff)
-                                    .color(0xff202c61)
+                                StoatButton::new()
                                     .corner_radius(40.)
+                                    .child(
+                                        rect()
+                                            .center()
+                                            .color(theme.md.primary.as_argb_u32())
+                                            .child("Confirm")
+                                            .height(Size::px(40.))
+                                            .padding((0., 16.)),
+                                    )
                                     .on_press(move |_| {
                                         let value = mfa_value.read().clone();
                                         let ticket = ticket.clone();
@@ -284,40 +314,4 @@ impl Component for Login {
                     )
             }))
     }
-}
-
-pub fn login_entry(
-    value: impl Into<Writable<String>>,
-    placeholder: impl Into<Cow<'static, str>>,
-    theme: &Theme,
-    mode: InputMode,
-) -> Rect {
-    rect()
-        .corner_radius(4.)
-        .border(
-            Border::new()
-                .width(BorderWidth {
-                    top: 0.,
-                    right: 0.,
-                    bottom: 1.,
-                    left: 0.,
-                })
-                .fill(theme.md.on_surface_variant.as_argb_u32())
-                .alignment(BorderAlignment::Inner),
-        )
-        .background(theme.md.surface_container_highest.as_argb_u32())
-        .padding((10., 8.))
-        .center()
-        .child(
-            Input::new(value)
-                .color(theme.md.on_surface.as_argb_u32())
-                .placeholder_color(theme.md.on_surface_variant.as_argb_u32())
-                .placeholder(placeholder)
-                .mode(mode)
-                .width(Size::Fill)
-                .flat()
-                .background(Color::TRANSPARENT)
-                .focus_background(Color::TRANSPARENT)
-                .focus_border_fill(Color::TRANSPARENT),
-        )
 }

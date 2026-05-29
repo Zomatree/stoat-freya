@@ -55,6 +55,9 @@ mod user_profile;
 mod welcome;
 mod profile_settings;
 mod tooltip;
+mod server_settings;
+mod overview_server_settings;
+mod entry;
 
 pub use app::*;
 pub use appearance_settings::*;
@@ -113,3 +116,6 @@ pub use user_profile::*;
 pub use welcome::*;
 pub use profile_settings::*;
 pub use tooltip::*;
+pub use server_settings::*;
+pub use overview_server_settings::*;
+pub use entry::*;
