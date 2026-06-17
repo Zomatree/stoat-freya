@@ -1,9 +1,12 @@
-use freya::{icons::lucide::file_text, prelude::*};
+use freya::{
+    icons::lucide::{download, file_text},
+    prelude::*,
+};
 use stoat_models::v0;
 
 use crate::{
-    components::{StoatButton, image},
-    use_material_theme,
+    components::{StoatButton, StoatButtonColorsThemePartialExt, StoatButtonLayoutThemePartialExt, image},
+    http, use_material_theme,
 };
 
 #[derive(PartialEq)]
@@ -96,20 +99,50 @@ impl Component for MessageAttachment {
                     .corner_radius(12.)
                     .overflow(Overflow::Clip)
                     .width(Size::Fill)
-                    .background(0xffe3e1e9)
-                    .color(0xff303036)
+                    .max_width(Size::px(420.))
+                    .background(theme.md.inverse_surface.as_argb_u32())
+                    .color(theme.md.inverse_on_surface.as_argb_u32())
                     .horizontal()
                     .cross_align(Alignment::Center)
                     .spacing(8.)
+                    .content(Content::Flex)
                     .child(svg(file_text()).width(Size::px(24.)).height(Size::px(24.)))
                     .child(
                         rect()
+                            .width(Size::flex(1.))
                             .spacing(8.)
                             .child(label().text(self.file.filename.clone()).font_size(14))
                             .child(
                                 label()
-                                    .text(format!("{} KB", self.file.size / 1000))
+                                    .text(format!("{:.2} KB", self.file.size as f32 / 1000.))
                                     .font_size(11),
+                            ),
+                    )
+                    .child(
+                        StoatButton::new()
+                            .corner_radius(20.)
+                            .color(theme.md.inverse_on_surface.as_argb_u32())
+                            .on_press({
+                                let file = self.file.clone();
+                                move |_| {
+                                    let url = format!(
+                                        "{}/{}/{}",
+                                        http().api_config.features.autumn.url,
+                                        &file.tag,
+                                        &file.id
+                                    );
+
+                                    open::that_in_background(url);
+                                }
+                            })
+                            .child(
+                                rect()
+                                    .width(Size::px(40.))
+                                    .height(Size::px(40.))
+                                    .center()
+                                    .child(
+                                        svg(download()).width(Size::px(24.)).height(Size::px(24.)),
+                                    ),
                             ),
                     )
                     .into_element(),

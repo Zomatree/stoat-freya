@@ -8,7 +8,7 @@ use freya::{
 use stoat_models::v0;
 
 use crate::{
-    AppChannel, Config, NotificationBadge,
+    AppChannel, ChannelSettingsPage, Config, NotificationBadge,
     components::{
         StoatButton, StoatButtonColorsThemePartialExt, StoatButtonLayoutThemePartialExt,
         StoatTooltip,
@@ -30,6 +30,9 @@ impl Component for ChannelButton {
         let unreads = radio.slice(AppChannel::ChannelUnreads, |state| &state.channel_unreads);
         let mutes = radio.slice(AppChannel::Settings("notifications"), |state| {
             &state.settings.notifications
+        });
+        let channel_settings = radio.slice_mut(AppChannel::ChannelSettingsPage, |state| {
+            &mut state.channel_settings_page
         });
 
         let mut hovering = use_state(|| false);
@@ -159,26 +162,52 @@ impl Component for ChannelButton {
                                 },
                             )
                             .maybe_child(hovering().then(|| {
-                                rect().horizontal().spacing(4.).child(
-                                    StoatTooltip::new(label().font_size(11.).max_lines(1).text("Create Invite"))
+                                rect()
+                                    .horizontal()
+                                    .spacing(4.)
+                                    .child(
+                                        StoatTooltip::new(
+                                            label()
+                                                .font_size(11.)
+                                                .max_lines(1)
+                                                .text("Create Invite"),
+                                        )
                                         .position(AttachedPosition::Top)
                                         .child(
                                             svg(user_plus())
                                                 .width(Size::px(16.))
                                                 .height(Size::px(16.))
-                                                .on_press(|e: Event<PressEventData>| { e.stop_propagation(); }),
+                                                .on_press(|e: Event<PressEventData>| {
+                                                    e.stop_propagation();
+                                                }),
+                                        ),
+                                    )
+                                    .child(
+                                        StoatTooltip::new(
+                                            label()
+                                                .font_size(11.)
+                                                .max_lines(1)
+                                                .text("Edit Channel"),
                                         )
-                                )
-                                .child(
-                                    StoatTooltip::new(label().font_size(11.).max_lines(1).text("Edit Channel"))
                                         .position(AttachedPosition::Top)
                                         .child(
                                             svg(settings())
                                                 .width(Size::px(16.))
                                                 .height(Size::px(16.))
-                                                .on_press(|e: Event<PressEventData>| { e.stop_propagation(); }),
-                                        )
-                                )
+                                                .on_press({
+                                                    let id = self.channel.peek().id().to_string();
+
+                                                    move |e: Event<PressEventData>| {
+                                                        e.stop_propagation();
+
+                                                        *channel_settings.clone().write() = Some((
+                                                            id.clone(),
+                                                            ChannelSettingsPage::default(),
+                                                        ));
+                                                    }
+                                                }),
+                                        ),
+                                    )
                             })),
                     ),
             )

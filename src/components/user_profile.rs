@@ -525,6 +525,7 @@ impl Component for ProfileRoles {
 
         let roles = use_side_effect_value({
             let member = self.member.clone();
+            let theme = theme.clone();
 
             move || {
                 let member = member.read();
@@ -535,7 +536,7 @@ impl Component for ProfileRoles {
                     .iter()
                     .filter_map(|id| server.roles.get(id))
                     .map(|role| {
-                        let color = role.colour.as_deref().and_then(parse_fill);
+                        let color = role.colour.as_deref().and_then(parse_fill).unwrap_or_else(|| Fill::Color(theme.md.outline_variant.as_argb_u32().into()));
 
                         (role.clone(), color)
                     })
@@ -556,16 +557,16 @@ impl Component for ProfileRoles {
                     .cross_align(Alignment::Center)
                     .width(Size::Fill)
                     .child(label().text(role.name.clone()).font_size(12.))
-                    .maybe_child(color.clone().map(|color| {
+                    .child({
                         let mut rect = rect()
                             .width(Size::px(8.))
                             .height(Size::px(8.))
                             .corner_radius(8.);
 
-                        rect.get_style().background = color;
+                        rect.get_style().background = color.clone();
 
                         rect
-                    }))
+                    })
                     .into_element()
             })),
         )

@@ -52,7 +52,7 @@ impl Component for SingleLineEntry {
         let theme = use_material_theme();
 
         let title_animation =
-            use_animation_with_dependencies(&(focus.read().is_focused() || !self.value.read().is_empty()), move |anim, focused| {
+            use_animation_with_dependencies(&(!self.value.read().is_empty() || focus.read().is_focused()), move |anim, focused| {
                 anim.on_creation(OnCreation::Finish);
                 anim.on_change(OnChange::Rerun);
 
@@ -136,7 +136,7 @@ impl Component for SingleLineEntry {
                                     .font_size(16)
                             )
                             .position(
-                                Position::new_absolute().top(title_top)//.left(-12. * (1. - title_scale) * 4.),
+                                Position::new_absolute().top(title_top)
                             )
                             .scale(title_scale)
                             .layer(1),

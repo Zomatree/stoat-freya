@@ -54,7 +54,8 @@ impl Component for MessageAttachmentsPreview {
                                     .center()
                                     .child(svg(plus()).width(Size::px(48.)).height(Size::px(48.))),
                             ),
-                    ),
+                    )
+                    .child(rect())
             )
     }
 }

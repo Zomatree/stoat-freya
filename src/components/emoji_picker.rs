@@ -166,7 +166,8 @@ impl Component for EmojiPicker {
                 .focus_border_fill(Color::TRANSPARENT),
         ))
             .child(
-                VirtualScrollView::new(move |row_i, _| {
+                VirtualScrollView::new({let
+                    on_select = self.on_select.clone(); move |row_i, _| {
                     let row_items = &items.read()[row_i * 10..row_i * 10 + 10];
 
                     rect()
@@ -208,7 +209,7 @@ impl Component for EmojiPicker {
                                 .height(Size::px(32.)
 
                             )).overflow(Overflow::Clip))
-
+                            .on_press({let id = emoji.id.clone(); let on_select = on_select.clone(); move |_| on_select.call(id.clone())})
                                 .into_element()
                             ,
                             Item::Title(title) => {
@@ -238,6 +239,7 @@ impl Component for EmojiPicker {
                                         .width(Size::px(32.))
                                         .height(Size::px(32.))
                                 ))
+                                .on_press({let value = value.clone(); let on_select = on_select.clone(); move |_| on_select.call(value.clone())})
                                         .into_element()
                             }
                         }
@@ -245,7 +247,7 @@ impl Component for EmojiPicker {
                         .into_element()
                         }))
                         .into_element()
-                })
+                }})
                 .item_size(40.)
                 .length(items.read().len() / 10)
                 .width(Size::Fill)

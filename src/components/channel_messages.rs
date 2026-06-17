@@ -13,8 +13,7 @@ use tokio::time::sleep;
 use crate::{
     AppChannel, ChannelState,
     components::{
-        Deferred, Message, MessageActions, MessageList, ReplyController,
-        TrailingMessage,
+        Deferred, Message, MessageActions, MessageList, ReplyController, TrailingMessage,
     },
     http, map_readable,
     types::Tag,
@@ -538,19 +537,28 @@ impl Component for ChannelMessages {
                         }
                     }),
                     on_message_delete: Rc::new({
-                        let mut messages = messages.clone();
+                        let messages = messages.clone();
                         let channel = channel.clone();
-                        move |channel, message| {}
+                        move |channel_id, message_id| {
+                            if channel.id() != &channel_id {
+                                return;
+                            };
+
+                            messages.clone().write().retain(|m| &m.id != &message_id);
+                        }
                     }),
                     on_message_update: Rc::new({
                         let messages = messages.clone();
                         let channel = channel.clone();
-                        move |channel_id, id, partial, remove| {
+                        move |channel_id, message_id, partial, remove| {
                             if channel.id() != &channel_id {
                                 return;
                             };
-                            if let Some(message) =
-                                messages.clone().write().iter_mut().find(|m| m.id == id)
+                            if let Some(message) = messages
+                                .clone()
+                                .write()
+                                .iter_mut()
+                                .find(|m| m.id == message_id)
                             {
                                 message.apply_options(partial);
 
@@ -563,24 +571,88 @@ impl Component for ChannelMessages {
                         }
                     }),
                     on_message_react: Rc::new({
-                        let mut messages = messages.clone();
+                        let messages = messages.clone();
                         let channel = channel.clone();
-                        move |channel, message, emoji, user| {}
+                        move |channel_id, message_id, emoji_id, user_id| {
+                            if channel.id() != &channel_id {
+                                return;
+                            };
+
+                            if let Some(message) = messages
+                                .clone()
+                                .write()
+                                .iter_mut()
+                                .find(|m| m.id == message_id)
+                            {
+                                message
+                                    .reactions
+                                    .entry(emoji_id.clone())
+                                    .or_default()
+                                    .insert(user_id.clone());
+                            }
+                        }
                     }),
                     on_message_unreact: Rc::new({
-                        let mut messages = messages.clone();
+                        let messages = messages.clone();
                         let channel = channel.clone();
-                        move |channel, message, emoji, user| {}
+                        move |channel_id, message_id, emoji_id, user_id| {
+                            if channel.id() != &channel_id {
+                                return;
+                            };
+
+                            if let Some(message) = messages
+                                .clone()
+                                .write()
+                                .iter_mut()
+                                .find(|m| m.id == message_id)
+                            {
+                                if let Some(users) = message.reactions.get_mut(&emoji_id) {
+                                    users.swap_remove(&user_id);
+
+                                    if users.is_empty() {
+                                        message.reactions.swap_remove(&emoji_id);
+                                    };
+                                }
+                            }
+                        }
                     }),
                     on_message_remove_reaction: Rc::new({
-                        let mut messages = messages.clone();
+                        let messages = messages.clone();
                         let channel = channel.clone();
-                        move |channel, message, emoji| {}
+                        move |channel_id, message_id, emoji_id| {
+                            if channel.id() != &channel_id {
+                                return;
+                            };
+
+                            if let Some(message) = messages
+                                .clone()
+                                .write()
+                                .iter_mut()
+                                .find(|m| m.id == message_id)
+                            {
+                                message.reactions.swap_remove(&emoji_id);
+                            }
+                        }
                     }),
                     on_message_append: Rc::new({
-                        let mut messages = messages.clone();
+                        let messages = messages.clone();
                         let channel = channel.clone();
-                        move |channel, message, append| {}
+                        move |channel_id, message_id, append| {
+                            if channel.id() != &channel_id {
+                                return;
+                            };
+
+                            if let Some(message) = messages
+                                .clone()
+                                .write()
+                                .iter_mut()
+                                .find(|m| m.id == message_id)
+                            {
+                                if let Some(embeds) = append.embeds.clone() {
+                                    message.embeds.get_or_insert_default().extend(embeds);
+                                }
+                            }
+                        }
                     }),
                 });
 

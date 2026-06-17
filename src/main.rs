@@ -93,7 +93,7 @@ fn main() {
             .with_window(
                 WindowConfig::new(app)
                     .with_title("Stoat")
-                    .with_app_id("chat.stoat.app")
+                    .with_app_id("live.zomatree.stoat")
                     .with_size(1280., 720.)
                     .with_decorations(true)
             )

@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use freya::{
-    icons::lucide::{plus, smile},
+    icons::lucide::{plus, send_horizontal, smile},
     prelude::*,
     radio::use_radio,
     text_edit::*,
@@ -11,7 +11,8 @@ use stoat_models::v0;
 use crate::{
     AppChannel, LocalFile,
     components::{
-        AttachmentController, EmojiPicker, ReplyController, StoatButton, StoatButtonLayoutThemePartialExt, use_floating
+        AttachmentController, EmojiPicker, ReplyController, StoatButton,
+        StoatButtonColorsThemePartialExt, StoatButtonLayoutThemePartialExt, use_floating,
     },
     http, use_material_theme,
 };
@@ -32,29 +33,33 @@ impl Component for Textbox {
         let a11y_id = use_a11y();
         let mut floating = use_floating();
 
+        // let mut height = use_state(|| 48.);
+
         rect()
-        .width(Size::Fill)
+            .width(Size::Fill)
             .font_size(14)
             .horizontal()
-            .min_height(Size::px(40.))
             .spacing(8.)
-            // .content(Content::Fit)
+            .content(Content::Flex)
             .child(
                 rect()
+                    .width(Size::flex(1.))
                     .horizontal()
                     .content(Content::Flex)
                     .background(theme.md.surface_container_high.as_argb_u32())
-                    .corner_radius(CornerRadius {
-                        top_left: 28.,
-                        top_right: 28.,
-                        bottom_right: 28.,
-                        bottom_left: 28.,
-                        smoothing: 0.,
-                    })
+                    // .corner_radius(CornerRadius {
+                    //     top_left: 28.,
+                    //     top_right: 12.,
+                    //     bottom_right: 12.,
+                    //     bottom_left: 28.,
+                    //     smoothing: 0.,
+                    // })
+                    .corner_radius(28.)
                     .padding((4., 8., 4., 0.))
                     .cross_align(Alignment::Center)
+                    // .on_sized(move |e: Event<SizedEventData>| height.set(e.area.height()))
                     .child(
-                        rect().width(Size::px(62.)).center().child(
+                        rect().width(Size::px(62.)).cross_align(Alignment::Center).main_align(Alignment::End).child(
                             StoatButton::new()
                                 .corner_radius(40.)
                                 .on_press({
@@ -79,12 +84,12 @@ impl Component for Textbox {
                     )
                     .child(
                         rect()
-                        .width(Size::flex(1.))
+                            .width(Size::flex(1.))
+                            .padding((4., 0.))
                             .child(
                                 paragraph()
-                                    .margin((4., 2., 4., 6.))
+                                    .line_height(1.4)
                                     .width(Size::Fill)
-                                    // .width(Size::func(|size| Some(size.parent - 16.)))
                                     .a11y_id(a11y_id)
                                     .a11y_auto_focus(true)
                                     .cursor_index(editable.editor().read().cursor_pos())
@@ -147,19 +152,24 @@ impl Component for Textbox {
                                                     async move {
                                                         let mut attachment_ids = Vec::new();
 
-                                                        for attachment in
-                                                            attachments.into_values()
+                                                        for attachment in attachments.into_values()
                                                         {
                                                             let file = http()
                                                                 .upload_file(
                                                                     "attachments",
                                                                     LocalFile {
-                                                                        name: if attachment.spoiler {
-                                                                            format!("SPOILER_{}", attachment.filename)
+                                                                        name: if attachment.spoiler
+                                                                        {
+                                                                            format!(
+                                                                                "SPOILER_{}",
+                                                                                attachment.filename
+                                                                            )
                                                                         } else {
                                                                             attachment.filename
                                                                         },
-                                                                        body: attachment.contents.into(),
+                                                                        body: attachment
+                                                                            .contents
+                                                                            .into(),
                                                                     },
                                                                 )
                                                                 .await
@@ -247,7 +257,6 @@ impl Component for Textbox {
                                         )
                                         .layer(Layer::RelativeOverlay(1))
                                         .position(Position::new_absolute())
-                                        .padding((4., 2., 4., 6.))
                                 },
                             )),
                     )
@@ -270,5 +279,23 @@ impl Component for Textbox {
                             ),
                     ),
             )
+            // .child(
+            //         StoatButton::new()
+            //             .corner_radius(CornerRadius {
+            //                 top_left: 12.,
+            //                 top_right: 28.,
+            //                 bottom_right: 28.,
+            //                 bottom_left: 12.,
+            //                 smoothing: 0.,
+            //             })
+            //             .background(theme.md.surface_container_high.as_argb_u32())
+            //             .child(
+            //                 rect().height(Size::px(height())).padding((0., 8.)).center().child(
+            //                     svg(send_horizontal())
+            //                         .width(Size::px(24.))
+            //                         .height(Size::px(24.)),
+            //                 ),
+            //             ),
+            // )
     }
 }

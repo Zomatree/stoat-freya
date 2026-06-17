@@ -58,6 +58,9 @@ mod tooltip;
 mod server_settings;
 mod overview_server_settings;
 mod entry;
+mod channel_settings;
+mod emoji_server_settings;
+mod role_server_settings;
 
 pub use app::*;
 pub use appearance_settings::*;
@@ -119,3 +122,6 @@ pub use tooltip::*;
 pub use server_settings::*;
 pub use overview_server_settings::*;
 pub use entry::*;
+pub use channel_settings::*;
+pub use emoji_server_settings::*;
+pub use role_server_settings::*;

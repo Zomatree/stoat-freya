@@ -6,7 +6,7 @@ use tokio::time::sleep;
 
 use crate::{
     AppChannel, ConnectionState, Selection,
-    components::{Discover, FloatingManager, Home, Server, ServerList, ServerSettings, Settings, UserProfile}, map_readable,
+    components::{ChannelSettings, Discover, FloatingManager, Home, Server, ServerList, ServerSettings, Settings, UserProfile}, map_readable,
 };
 
 #[derive(PartialEq)]
@@ -20,6 +20,8 @@ impl Component for Client {
 
         let servers = radio.slice(AppChannel::Servers, |state| &state.servers);
         let server_settings = radio.slice(AppChannel::ServerSettingsPage, |state| &state.server_settings_page);
+        let channels = radio.slice(AppChannel::Channels, |state| &state.channels);
+        let channel_settings = radio.slice(AppChannel::ChannelSettingsPage, |state| &state.channel_settings_page);
         let connection_state = radio.slice_mut(AppChannel::State, |state| &mut state.state);
         let user_profile = radio.slice_mut(AppChannel::UserProfile, |state| &mut state.user_profile);
 
@@ -64,6 +66,26 @@ impl Component for Client {
         });
 
         let server_settings_opacity = server_settings_animation.read().value();
+
+        let show_channel_settings = use_reactive(&channel_settings.read().is_some());
+
+        let channel_settings_animation = use_animation(move |conf| {
+            conf.on_change(OnChange::Rerun);
+            conf.on_creation(OnCreation::Finish);
+
+            let opacity = AnimNum::new(0., 1.)
+                .time(350)
+                .ease(Ease::Out)
+                .function(Function::Expo);
+
+            if show_channel_settings() {
+                opacity
+            } else {
+                opacity.into_reversed()
+            }
+        });
+
+        let channel_settings_opacity = channel_settings_animation.read().value();
 
         use_side_effect({
             let connection_state = connection_state.clone();
@@ -123,7 +145,6 @@ impl Component for Client {
                     .into_element()
             }))
             .maybe_child(server_settings.read().as_ref().map(|(id, _)| id.clone()).filter(|_| server_settings_opacity > 0.).map(|server_id| {
-
                 rect()
                     .position(Position::new_global())
                     .width(Size::window_percent(100.))
@@ -132,6 +153,18 @@ impl Component for Client {
                     .opacity(server_settings_opacity)
                     .child(ServerSettings {
                         server: map_readable::<HashMap<String, v0::Server>, _>(servers.into_readable(), move |servers| servers.get(&server_id).unwrap())
+                    })
+                    .into_element()
+            }))
+            .maybe_child(channel_settings.read().as_ref().map(|(id, _)| id.clone()).filter(|_| channel_settings_opacity > 0.).map(|channel_id| {
+                rect()
+                    .position(Position::new_global())
+                    .width(Size::window_percent(100.))
+                    .height(Size::window_percent(100.))
+                    .layer(Layer::Overlay)
+                    .opacity(channel_settings_opacity)
+                    .child(ChannelSettings {
+                        channel: map_readable::<HashMap<String, v0::Channel>, _>(channels.into_readable(), move |channels| channels.get(&channel_id).unwrap())
                     })
                     .into_element()
             }))

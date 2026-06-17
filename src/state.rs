@@ -1,7 +1,7 @@
 use bytes::Bytes;
 use freya::{
     icons::lucide::{
-        banknote, bot_message_square, circle_user_round, cpu, flag, flask_conical, globe, info, mail, message_square_diff, mic, palette, shield_check, smile, user_x
+        banknote, bot_message_square, circle_user_round, cloud, cpu, flag, flask_conical, globe, info, list, mail, message_square_diff, mic, palette, shield_check, smile, user_x
     },
     prelude::State,
     radio::{RadioChannel, RadioStation},
@@ -100,21 +100,47 @@ pub enum ServerSettingsPage {
 impl ServerSettingsPage {
     pub fn title(&self) -> &'static str {
         match self {
-            ServerSettingsPage::Overview => "Overview",
-            ServerSettingsPage::Emojis => "Emojis",
-            ServerSettingsPage::Roles => "Roles",
-            ServerSettingsPage::Invites => "Invites",
-            ServerSettingsPage::Bans => "Bans",
+            Self::Overview => "Overview",
+            Self::Emojis => "Emojis",
+            Self::Roles => "Roles",
+            Self::Invites => "Invites",
+            Self::Bans => "Bans",
         }
     }
 
     pub fn icon(&self) -> Bytes {
         match self {
-            ServerSettingsPage::Overview => info(),
-            ServerSettingsPage::Emojis => smile(),
-            ServerSettingsPage::Roles => flag(),
-            ServerSettingsPage::Invites => mail(),
-            ServerSettingsPage::Bans => user_x(),
+            Self::Overview => info(),
+            Self::Emojis => smile(),
+            Self::Roles => flag(),
+            Self::Invites => mail(),
+            Self::Bans => user_x(),
+        }
+    }
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
+pub enum ChannelSettingsPage {
+    #[default]
+    Overview,
+    Permissions,
+    Webhooks,
+}
+
+impl ChannelSettingsPage {
+    pub fn title(&self) -> &'static str {
+        match self {
+            Self::Overview => "Overview",
+            Self::Permissions => "Permissions",
+            Self::Webhooks => "Webhooks",
+        }
+    }
+
+    pub fn icon(&self) -> Bytes {
+        match self {
+            Self::Overview => info(),
+            Self::Permissions => list(),
+            Self::Webhooks => cloud(),
         }
     }
 }
@@ -228,6 +254,7 @@ pub struct AppState {
     pub message_handlers: Option<MessageHandlers>,
     pub editing_message: Option<EditingMessage>,
     pub server_settings_page: Option<(String, ServerSettingsPage)>,
+    pub channel_settings_page: Option<(String, ChannelSettingsPage)>,
 }
 
 impl AppState {
@@ -278,6 +305,7 @@ pub enum AppChannel {
     UserProfile,
     MessageHandlers,
     EditingMessage,
+    ChannelSettingsPage,
 }
 
 impl RadioChannel<AppState> for AppChannel {}
@@ -387,16 +415,6 @@ pub fn update_channel(channel_id: &str, mut station: AppStation, f: impl FnOnce(
     }
 }
 
-pub fn delete_message(message_id: &str, channel_id: &str, mut station: AppStation) {
-    if let Some(channel_state) = station
-        .write_channel(AppChannel::ChannelStates)
-        .channel_states
-        .get_mut(channel_id)
-    {
-        channel_state.messages.retain(|id| id.id != message_id);
-    }
-}
-
 pub fn set_selection(selection: Selection, mut station: AppStation) {
     station.write_channel(AppChannel::Selection).selection = selection;
 }
@@ -457,6 +475,10 @@ pub fn update_user(user_id: &str, mut station: AppStation, f: impl FnOnce(&mut U
 
 pub fn insert_emoji(emoji: Emoji, mut station: AppStation) {
     station.write_channel(AppChannel::Emojis).emojis.insert(emoji.id.clone(), emoji);
+}
+
+pub fn remove_emoji(emoji_id: &str, mut station: AppStation) {
+    station.write_channel(AppChannel::Emojis).emojis.remove(emoji_id);
 }
 
 pub fn update_state(
@@ -671,7 +693,15 @@ pub fn update_state(
             }
         }
         EventV1::MessageDelete { id, channel } => {
-            delete_message(&id, &channel, station);
+            if let Some(channel_state) = station
+                .write_channel(AppChannel::ChannelStates)
+                .channel_states
+                .get_mut(&channel)
+            {
+                channel_state.messages.retain(|m| m.id != id);
+            } else if let Some(handle) = &station.read().message_handlers {
+                (handle.on_message_delete)(channel, id)
+            }
         }
         EventV1::MessageReact {
             id,
@@ -716,7 +746,7 @@ pub fn update_state(
                     }
                 }
             } else if let Some(handle) = &station.read().message_handlers {
-                (handle.on_message_react)(channel_id, id, emoji_id, user_id)
+                (handle.on_message_unreact)(channel_id, id, emoji_id, user_id)
             }
         }
         EventV1::MessageRemoveReaction {
@@ -784,6 +814,12 @@ pub fn update_state(
                     }
                 }
             });
+        }
+        EventV1::EmojiCreate(emoji) => {
+            insert_emoji(emoji, station);
+        }
+        EventV1::EmojiDelete { id } => {
+            remove_emoji(&id, station);
         }
         // EventV1::ChannelStartTyping { id, user } => {
         //     context

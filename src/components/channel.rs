@@ -326,7 +326,7 @@ impl Component for Channel {
                                     .maybe_child(attachments.not_empty().then(|| {
                                         rect()
                                             .margin((0., 0., 8., 0.))
-                                            .width(Size::func(|size| Some(size.parent - 16.)))
+                                            // .width(Size::func(|size| Some(size.parent - 16.)))
                                             .child(MessageAttachmentsPreview {
                                                 attachments: attachments.clone(),
                                             })

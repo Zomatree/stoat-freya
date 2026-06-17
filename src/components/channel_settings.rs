@@ -8,21 +8,21 @@ use freya::{
 use stoat_models::v0;
 
 use crate::{
-    AppChannel, ServerSettingsPage,
-    components::{EmojiServerSettings, OverviewServerSettings, RoleServerSettings, StoatButton, StoatButtonColorsThemePartialExt, StoatButtonLayoutThemePartialExt},
+    AppChannel, ChannelSettingsPage,
+    components::{StoatButton, StoatButtonColorsThemePartialExt, StoatButtonLayoutThemePartialExt},
     theme::Theme,
     use_material_theme,
 };
 
 #[derive(PartialEq)]
-pub struct ServerSettings {
-    pub server: Readable<v0::Server>,
+pub struct ChannelSettings {
+    pub channel: Readable<v0::Channel>,
 }
 
-impl Component for ServerSettings {
+impl Component for ChannelSettings {
     fn render(&self) -> impl IntoElement {
-        let radio = use_radio(AppChannel::ServerSettingsPage);
-        let current_page = radio.slice_mut_current(|state| &mut state.server_settings_page);
+        let radio = use_radio(AppChannel::ChannelSettingsPage);
+        let current_page = radio.slice_mut_current(|state| &mut state.channel_settings_page);
         let theme = use_material_theme();
 
         let close_settings = {
@@ -80,25 +80,14 @@ impl Component for ServerSettings {
                                     .padding((24., 16., 16., 16.))
                                     .spacing(15.)
                                     .child(settings_category(
-                                        self.server.read().name.to_uppercase(),
+                                        match &*self.channel.read() {
+                                            v0::Channel::TextChannel { name, .. } | v0::Channel::Group { name, .. } => name.clone(),
+                                            _ => unreachable!()
+                                        },
                                         &theme,
-                                        &[ServerSettingsPage::Overview],
+                                        &[ChannelSettingsPage::Overview, ChannelSettingsPage::Permissions, ChannelSettingsPage::Webhooks],
                                     ))
-                                    .child(settings_category(
-                                        "CUSTOMISATION",
-                                        &theme,
-                                        &[ServerSettingsPage::Emojis],
-                                    ))
-                                    .child(settings_category(
-                                        "USER MANAGEMENT",
-                                        &theme,
-                                        &[
-                                            ServerSettingsPage::Roles,
-                                            ServerSettingsPage::Invites,
-                                            ServerSettingsPage::Bans,
-                                        ],
-                                    ))
-                                    .child(DeleteServerButton {}),
+                                    .child(DeleteChannelButton {}),
                             ),
                     )
                     .child(
@@ -129,19 +118,13 @@ impl Component for ServerSettings {
                                                     .font_weight(550),
                                             )
                                             .child(match page {
-                                                ServerSettingsPage::Overview => {
-                                                    OverviewServerSettings { server: self.server.clone() }.into_element()
-                                                }
-                                                ServerSettingsPage::Emojis => {
-                                                    EmojiServerSettings { server: self.server.clone() }.into_element()
-                                                }
-                                                ServerSettingsPage::Roles => {
-                                                    RoleServerSettings { server: self.server.clone() }.into_element()
-                                                }
-                                                ServerSettingsPage::Invites => {
+                                                ChannelSettingsPage::Overview => {
                                                     "Coming soon!".into_element()
                                                 }
-                                                ServerSettingsPage::Bans => {
+                                                ChannelSettingsPage::Permissions => {
+                                                    "Coming soon!".into_element()
+                                                }
+                                                ChannelSettingsPage::Webhooks => {
                                                     "Coming soon!".into_element()
                                                 }
                                             })
@@ -173,14 +156,14 @@ impl Component for ServerSettings {
 }
 
 #[derive(PartialEq)]
-struct ServerSettingsButton {
-    pub page: ServerSettingsPage,
+struct ChannelSettingsButton {
+    pub page: ChannelSettingsPage,
 }
 
-impl Component for ServerSettingsButton {
+impl Component for ChannelSettingsButton {
     fn render(&self) -> impl IntoElement {
-        let radio = use_radio(AppChannel::ServerSettingsPage);
-        let current_page = radio.slice_mut_current(|state| &mut state.server_settings_page);
+        let radio = use_radio(AppChannel::ChannelSettingsPage);
+        let current_page = radio.slice_mut_current(|state| &mut state.channel_settings_page);
         let theme = use_material_theme();
 
         StoatButton::new()
@@ -226,7 +209,7 @@ impl Component for ServerSettingsButton {
 fn settings_category(
     title: impl Into<Cow<'static, str>>,
     theme: &Theme,
-    pages: &[ServerSettingsPage],
+    pages: &[ChannelSettingsPage],
 ) -> Rect {
     rect()
         .spacing(8.)
@@ -242,15 +225,15 @@ fn settings_category(
             rect().spacing(6.).children(
                 pages
                     .into_iter()
-                    .map(|page| ServerSettingsButton { page: *page }.into_element()),
+                    .map(|page| ChannelSettingsButton { page: *page }.into_element()),
             ),
         )
 }
 
 #[derive(PartialEq)]
-struct DeleteServerButton {}
+struct DeleteChannelButton {}
 
-impl Component for DeleteServerButton {
+impl Component for DeleteChannelButton {
     fn render(&self) -> impl IntoElement {
         let theme = use_material_theme();
 
@@ -273,7 +256,7 @@ impl Component for DeleteServerButton {
                         label()
                             .font_size(15)
                             .margin((0., 0., 2., 0.))
-                            .text("Delete Server"),
+                            .text("Delete Channel"),
                     ),
             )
             .on_press(move |_| {})

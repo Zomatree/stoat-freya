@@ -1,11 +1,13 @@
 use freya::{prelude::*, radio::use_radio};
+use freya_components::gif_viewer::GifViewer;
 use stoat_models::v0;
 
 use crate::{
     AppChannel,
-    components::{MessageModel, NetworkSvg, StoatButton},
+    components::{MessageModel, NetworkSvg, StoatButton, StoatButtonLayoutThemePartialExt},
     http,
     types::Tag,
+    use_material_theme,
 };
 
 #[derive(PartialEq)]
@@ -17,8 +19,8 @@ pub struct MessageReactions {
 impl Component for MessageReactions {
     fn render(&self) -> impl IntoElement {
         let radio = use_radio(AppChannel::UserId);
-
         let user_id = radio.slice_current(|state| state.user_id.as_ref().unwrap());
+        let theme = use_material_theme();
 
         rect()
             .spacing(4.)
@@ -32,6 +34,7 @@ impl Component for MessageReactions {
                     .into_iter()
                     .map(|(emoji, users)| {
                         StoatButton::new()
+                        .corner_radius(12.)
                         .on_press({
                             let channel = self.channel.clone();
                             let message = self.message.clone();
@@ -67,12 +70,12 @@ impl Component for MessageReactions {
                         rect()
                             .key(&emoji)
                             .horizontal()
-                            .corner_radius(12.)
                             .padding(8.)
                             .spacing(8.)
-                            .background(0xff1b1b21)
-                            .maybe(users.contains(&*user_id.read()), |this| this.background(0xff424659))
-                            .child({
+                            .background(theme.md.surface_container_low.as_argb_u32())
+                            .color(theme.md.on_surface.as_argb_u32())
+                            .maybe(users.contains(&*user_id.read()), |this| this.background(theme.md.secondary_container.as_argb_u32()).color(theme.md.on_secondary_container.as_argb_u32()))
+                            .child(rect().margin((0., 0.7, 0., 1.4)).child({
                                 if emoji.len() == 26 {
                                     let url = format!(
                                         "{}/{}/{emoji}",
@@ -82,8 +85,8 @@ impl Component for MessageReactions {
 
                                     ImageViewer::new(url.parse::<Uri>().unwrap())
                                         .sampling_mode(SamplingMode::Trilinear)
-                                        .width(Size::px(18.))
-                                        .height(Size::px(18.))
+                                        .width(Size::px(16.8))
+                                        .height(Size::px(16.8))
                                         .into_element()
                                 } else {
                                     let codes = emoji
@@ -97,11 +100,11 @@ impl Component for MessageReactions {
                                     );
 
                                     NetworkSvg::new(url.parse::<Uri>().unwrap())
-                                        .width(Size::px(18.))
-                                        .height(Size::px(18.))
+                                        .width(Size::px(16.8))
+                                        .height(Size::px(16.8))
                                         .into_element()
                                 }
-                            })
+                            }))
                             .child(label().text(users.len().to_string()).font_size(14).line_height(1.5))
                               )      .into_element()
                     }),

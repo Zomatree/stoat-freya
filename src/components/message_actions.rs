@@ -7,7 +7,13 @@ use stoat_models::v0;
 
 use crate::{
     AppChannel,
-    components::{MessageModel, ReplyController, StoatButton, StoatButtonColorsThemePartialExt}, theme::Theme, use_material_theme,
+    components::{
+        EmojiPicker, MessageModel, ReplyController, StoatButton, StoatButtonColorsThemePartialExt,
+        use_floating,
+    },
+    http,
+    theme::Theme,
+    use_material_theme,
 };
 
 #[derive(PartialEq)]
@@ -57,6 +63,7 @@ impl Component for MessageActions {
         let mut editing_message = radio.slice_mut(AppChannel::EditingMessage, |state| {
             &mut state.editing_message
         });
+        let mut floating = use_floating();
 
         let mut hovering = use_state(|| false);
         let mut hover_actions = use_state(|| false);
@@ -108,9 +115,10 @@ impl Component for MessageActions {
                 }
             })
             .corner_radius(12.)
-            // .overflow(Overflow::Clip)
             .children(self.children.clone())
-            .maybe(*mentions_user.read(), |this| this.background(theme.md.primary_container.as_argb_u32()))
+            .maybe(*mentions_user.read(), |this| {
+                this.background(theme.md.primary_container.as_argb_u32())
+            })
             .maybe(*hovering.read() || *hover_actions.read(), |this| {
                 this.background(theme.md.surface_container.as_argb_u32())
             })
@@ -133,7 +141,34 @@ impl Component for MessageActions {
                             replies.add_reply(message.clone(), true);
                         }
                     }))
-                    .child(message_actions_button(smile(), &theme))
+                    .child(message_actions_button(smile(), &theme).on_press({
+                        let message_id = self.message.message.id.clone();
+                        let channel_id = self.channel.peek().id().to_string();
+
+                        move |_| {
+                            floating.set(Some(
+                                EmojiPicker::new({
+                                    let message_id = message_id.clone();
+                                    let channel_id = channel_id.clone();
+
+                                    move |id: String| {
+                                        let message_id = message_id.clone();
+                                        let channel_id = channel_id.clone();
+                                        floating.set(None);
+
+                                        spawn_forever(async move {
+                                            println!("1");
+                                            println!("{:?}", http()
+                                                .react_message(&channel_id, &message_id, &id)
+                                                .await);
+                                            println!("2");
+                                        });
+                                    }
+                                })
+                                .into_element(),
+                            ));
+                        }
+                    }))
                     .maybe_child((&self.message.message.author == &*user_id.read()).then(|| {
                         message_actions_button(pencil(), &theme).on_press({
                             let message = self.message.message.clone();
@@ -159,12 +194,13 @@ impl Component for MessageActions {
 
 pub fn message_actions_button(icon: Bytes, theme: &Theme) -> StoatButton {
     StoatButton::new()
-        .child(rect().padding(4.).child(
-            svg(icon)
-                .color(theme.md.on_secondary_container.as_argb_u32())
-                .width(Size::px(20.))
-                .height(Size::px(20.))
-        )
+        .child(
+            rect().padding(4.).child(
+                svg(icon)
+                    .color(theme.md.on_secondary_container.as_argb_u32())
+                    .width(Size::px(20.))
+                    .height(Size::px(20.)),
+            ),
         )
         .background(theme.md.secondary_container.as_argb_u32())
 }
