@@ -1,8 +1,4 @@
-# Stoat Freya Client
-
-## _Very Early Alpha - Please do not use yet_
-
-## _WIP Name - Not final._
+# Ermine
 
 > ### This project has no affiliation with the official Stoat project or Revolt Platforms LTD.
 
@@ -17,7 +13,7 @@ Also styled after Material 3 UI.
 Please ensure you have rust-lang installed beforehand.
 
 ```bash
-git clone https://github.com/zomatree/stoat-freya
-cd stoat-freya
+git clone https://github.com/zomatree/ermine
+cd ermine
 cargo run --release
 ```

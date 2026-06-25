@@ -3,6 +3,45 @@
 version = 4
 
 [[package]]
+name = "Ermine"
+version = "0.3.0"
+dependencies = [
+ "blocking",
+ "bytes",
+ "chumsky",
+ "etcetera",
+ "euclid",
+ "freya",
+ "freya-components",
+ "futures",
+ "indexmap",
+ "infer",
+ "itertools 0.11.0",
+ "jiff",
+ "livekit",
+ "log",
+ "material-colors",
+ "open",
+ "pretty_env_logger 0.5.0",
+ "rand 0.10.1",
+ "regex",
+ "reqwest 0.12.28",
+ "revolt-config",
+ "revolt-models",
+ "revolt-permissions",
+ "revolt-result",
+ "rfd",
+ "scc",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-tungstenite 0.27.0",
+ "tungstenite 0.27.0",
+ "ulid",
+ "ureq 3.3.0",
+]
+
+[[package]]
 name = "ab_glyph"
 version = "0.2.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7188,45 +7227,6 @@ name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
-
-[[package]]
-name = "stoat-freya"
-version = "0.3.0"
-dependencies = [
- "blocking",
- "bytes",
- "chumsky",
- "etcetera",
- "euclid",
- "freya",
- "freya-components",
- "futures",
- "indexmap",
- "infer",
- "itertools 0.11.0",
- "jiff",
- "livekit",
- "log",
- "material-colors",
- "open",
- "pretty_env_logger 0.5.0",
- "rand 0.10.1",
- "regex",
- "reqwest 0.12.28",
- "revolt-config",
- "revolt-models",
- "revolt-permissions",
- "revolt-result",
- "rfd",
- "scc",
- "serde",
- "serde_json",
- "tokio",
- "tokio-tungstenite 0.27.0",
- "tungstenite 0.27.0",
- "ulid",
- "ureq 3.3.0",
-]
 
 [[package]]
 name = "str_indices"

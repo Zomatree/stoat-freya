@@ -94,6 +94,20 @@ impl Component for ServerListButton {
                 hovering.set(true);
             })
             .on_pointer_out(move |_| hovering.set_if_modified(false))
+            .on_secondary_down({
+                move |e| {
+                    ContextMenu::open_from_event(
+                        &e,
+                        Menu::new().child(MenuButton::new().child("Copy Server ID").on_press({
+                            let server = server.clone();
+
+                            move |_| {
+                                Clipboard::set(server.read().id.clone()).unwrap();
+                            }
+                        })),
+                    );
+                }
+            })
             .maybe_child(
                 (*selected.read() || *badge.read() == Some(NotificationBadge::Unread)).then(|| {
                     rect()
@@ -111,93 +125,93 @@ impl Component for ServerListButton {
             )
             .child(
                 StoatTooltip::new(label().max_lines(1).text(server.read().name.clone()))
-                .position(AttachedPosition::Right)
-                .child(
-                    rect()
-                        .center()
-                        .width(Size::px(56.0))
-                        .height(Size::px(56.0))
-                        .child(
-                            rect()
-                                .width(Size::px(42.0))
-                                .height(Size::px(42.0))
-                                .child(
-                                    StoatButton::new()
-                                        .corner_radius(42.)
-                                        .child(
-                                            rect()
-                                                .width(Size::px(42.0))
-                                                .height(Size::px(42.0))
-                                                // .overflow(Overflow::Clip)
-                                                .child(server_icon(&server.read(), &theme)),
-                                        )
-                                        .on_press({
-                                            move |_| {
-                                                radio
-                                                    .write_channel(AppChannel::Selection)
-                                                    .selection =
-                                                    Selection::Server(server.peek().id.clone());
+                    .position(AttachedPosition::Right)
+                    .child(
+                        rect()
+                            .center()
+                            .width(Size::px(56.0))
+                            .height(Size::px(56.0))
+                            .child(
+                                rect()
+                                    .width(Size::px(42.0))
+                                    .height(Size::px(42.0))
+                                    .child(
+                                        StoatButton::new()
+                                            .corner_radius(42.)
+                                            .child(
+                                                rect()
+                                                    .width(Size::px(42.0))
+                                                    .height(Size::px(42.0))
+                                                    // .overflow(Overflow::Clip)
+                                                    .child(server_icon(&server.read(), &theme)),
+                                            )
+                                            .on_press({
+                                                move |_| {
+                                                    radio
+                                                        .write_channel(AppChannel::Selection)
+                                                        .selection =
+                                                        Selection::Server(server.peek().id.clone());
 
-                                                let channel_id = config
-                                                    .read()
-                                                    .last_channels
-                                                    .get(&server.peek().id)
-                                                    .cloned()
-                                                    .or_else(|| {
-                                                        let channels = radio
-                                                            .slice(AppChannel::Channels, |state| {
-                                                                &state.channels
-                                                            });
+                                                    let channel_id = config
+                                                        .read()
+                                                        .last_channels
+                                                        .get(&server.peek().id)
+                                                        .cloned()
+                                                        .or_else(|| {
+                                                            let channels = radio.slice(
+                                                                AppChannel::Channels,
+                                                                |state| &state.channels,
+                                                            );
 
-                                                        server
-                                                            .read()
-                                                            .channels
-                                                            .iter()
-                                                            .find(|&id| {
-                                                                channels.read().contains_key(id)
-                                                            })
-                                                            .cloned()
-                                                    });
+                                                            server
+                                                                .read()
+                                                                .channels
+                                                                .iter()
+                                                                .find(|&id| {
+                                                                    channels.read().contains_key(id)
+                                                                })
+                                                                .cloned()
+                                                        });
 
-                                                radio
-                                                    .write_channel(AppChannel::SelectedChannel)
-                                                    .selected_channel = channel_id;
-                                            }
-                                        }),
-                                )
-                                .maybe_child(
-                                    badge
-                                        .read()
-                                        .as_ref()
-                                        .and_then(|badge| {
-                                            if let NotificationBadge::Mentions(count) = badge {
-                                                Some(count)
-                                            } else {
-                                                None
-                                            }
-                                        })
-                                        .map(|count| {
-                                            rect()
-                                                .position(
-                                                    Position::new_absolute().right(0.).top(0.),
-                                                )
-                                                .layer(Layer::Relative(10))
-                                                .width(Size::px(13.))
-                                                .height(Size::px(13.))
-                                                .corner_radius(13.)
-                                                .center()
-                                                .background(theme.md.error.as_argb_u32())
-                                                .color(theme.md.on_error.as_argb_u32())
-                                                .font_size(10.)
-                                                .child(if *count <= 9 {
-                                                    count.to_string()
+                                                    radio
+                                                        .write_channel(AppChannel::SelectedChannel)
+                                                        .selected_channel = channel_id;
+                                                }
+                                            }),
+                                    )
+                                    .maybe_child(
+                                        badge
+                                            .read()
+                                            .as_ref()
+                                            .and_then(|badge| {
+                                                if let NotificationBadge::Mentions(count) = badge {
+                                                    Some(count)
                                                 } else {
-                                                    "+".to_string()
-                                                })
-                                        }),
-                                ),
-                        ),
-                ),
+                                                    None
+                                                }
+                                            })
+                                            .map(|count| {
+                                                rect()
+                                                    .position(
+                                                        Position::new_absolute().right(0.).top(0.),
+                                                    )
+                                                    .layer(Layer::Relative(10))
+                                                    .width(Size::px(13.))
+                                                    .height(Size::px(13.))
+                                                    .corner_radius(13.)
+                                                    .center()
+                                                    .background(theme.md.error.as_argb_u32())
+                                                    .color(theme.md.on_error.as_argb_u32())
+                                                    .font_size(10.)
+                                                    .child(if *count <= 9 {
+                                                        count.to_string()
+                                                    } else {
+                                                        "+".to_string()
+                                                    })
+                                            }),
+                                    ),
+                            ),
+                    ),
             )
     }
 

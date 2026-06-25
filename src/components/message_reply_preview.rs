@@ -32,7 +32,8 @@ impl Component for MessageReplyPreview {
             .color(theme.md.on_primary_container.as_argb_u32())
             .corner_radius(16.)
             .overflow(Overflow::Clip)
-            .width(Size::func(|size| Some(size.parent - 16.)))
+            .content(Content::Flex)
+            // .width(Size::func(|size| Some(size.parent - 16.)))
             .padding((8., 16., 8., 16.))
             .horizontal()
             .content(Content::Flex)
@@ -81,6 +82,7 @@ impl Component for MessageReplyPreview {
                             .child(
                                 label()
                                     .text(message.message.content.clone().unwrap_or_default())
+                                    .width(Size::flex(1.))
                                     .max_lines(1)
                                     .text_overflow(TextOverflow::Ellipsis)
                                     .into_element(),

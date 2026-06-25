@@ -1,8 +1,9 @@
 [package]
-name = "stoat-freya"
+name = "Ermine"
 version = "0.3.0"
 edition = "2024"
-repository = "https://github.com/Zomatree/stoat-freya"
+repository = "https://github.com/Zomatree/ermine"
+description = "Native desktop client for Stoat chat"
 
 [features]
 hotreload = ["freya/hotreload"]

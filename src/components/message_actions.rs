@@ -110,6 +110,12 @@ impl Component for MessageActions {
                                 move |_| {
                                     replies.add_reply(message.clone(), true);
                                 }
+                            }))
+                            .child(MenuButton::new().child("Copy Message ID").on_press({
+                                let message = message.clone();
+                                move |_| {
+                                    Clipboard::set(message.message.id.clone()).unwrap();
+                                }
                             })),
                     );
                 }
@@ -158,9 +164,12 @@ impl Component for MessageActions {
 
                                         spawn_forever(async move {
                                             println!("1");
-                                            println!("{:?}", http()
-                                                .react_message(&channel_id, &message_id, &id)
-                                                .await);
+                                            println!(
+                                                "{:?}",
+                                                http()
+                                                    .react_message(&channel_id, &message_id, &id)
+                                                    .await
+                                            );
                                             println!("2");
                                         });
                                     }
@@ -183,7 +192,26 @@ impl Component for MessageActions {
                         })
                     }))
                     .child(message_actions_button(trash_2(), &theme))
-                    .child(message_actions_button(ellipsis_vertical(), &theme))
+                    .child(
+                        message_actions_button(ellipsis_vertical(), &theme).on_press({
+                            let id = self.message.message.id.clone();
+
+                            move |e| {
+                                ContextMenu::open_from_event(
+                                    &e,
+                                    Menu::new().child(MenuButton::new().child("Copy Message ID").on_press(
+                                        {
+                                            let id = id.clone();
+
+                                            move |_| {
+                                                Clipboard::set(id.clone()).unwrap();
+                                            }
+                                        },
+                                    )),
+                                );
+                            }
+                        }),
+                    )
             }))
     }
 

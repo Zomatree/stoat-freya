@@ -345,7 +345,21 @@ impl Component for ProfileButtons {
             }))
             .child(
                 StoatButton::new()
-                    .on_press(move |_| {})
+                    .on_press({
+                        let id = user.id.clone();
+                        move |e| {
+                            ContextMenu::open_from_event(
+                                &e,
+                                Menu::new().child(MenuButton::new().child("Copy User ID").on_press({
+                                    let id = id.clone();
+
+                                    move |_| {
+                                        Clipboard::set(id.clone()).unwrap();
+                                    }
+                                })),
+                            );
+                        }
+                    })
                     .corner_radius(40.)
                     .child(
                         rect()
@@ -475,7 +489,12 @@ impl Component for ProfileJoined {
                         .line_height(1.5)
                         .text("Stoat"),
                 )
-                .child(label().font_size(14.).line_height(1.5).text(platform_joined_at))
+                .child(
+                    label()
+                        .font_size(14.)
+                        .line_height(1.5)
+                        .text(platform_joined_at),
+                )
                 .map(server_joined_at, |this, (server_name, joined_at)| {
                     this.child(
                         label()
@@ -536,7 +555,13 @@ impl Component for ProfileRoles {
                     .iter()
                     .filter_map(|id| server.roles.get(id))
                     .map(|role| {
-                        let color = role.colour.as_deref().and_then(parse_fill).unwrap_or_else(|| Fill::Color(theme.md.outline_variant.as_argb_u32().into()));
+                        let color =
+                            role.colour
+                                .as_deref()
+                                .and_then(parse_fill)
+                                .unwrap_or_else(|| {
+                                    Fill::Color(theme.md.outline_variant.as_argb_u32().into())
+                                });
 
                         (role.clone(), color)
                     })

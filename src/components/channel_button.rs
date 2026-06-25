@@ -75,6 +75,22 @@ impl Component for ChannelButton {
                 hovering.set(true);
             })
             .on_pointer_out(move |_| hovering.set_if_modified(false))
+            .on_secondary_down({
+                let channel = self.channel.clone();
+
+                move |e| {
+                    ContextMenu::open_from_event(
+                        &e,
+                        Menu::new().child(MenuButton::new().child("Copy Channel ID").on_press({
+                            let channel = channel.clone();
+
+                            move |_| {
+                                Clipboard::set(channel.read().id().to_string()).unwrap();
+                            }
+                        })),
+                    );
+                }
+            })
             .child(
                 StoatButton::new()
                     .corner_radius(42.)

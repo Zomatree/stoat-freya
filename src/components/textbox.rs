@@ -59,28 +59,34 @@ impl Component for Textbox {
                     .cross_align(Alignment::Center)
                     // .on_sized(move |e: Event<SizedEventData>| height.set(e.area.height()))
                     .child(
-                        rect().width(Size::px(62.)).cross_align(Alignment::Center).main_align(Alignment::End).child(
-                            StoatButton::new()
-                                .corner_radius(40.)
-                                .on_press({
-                                    let attachments = self.attachments.clone();
+                        rect()
+                            .width(Size::px(62.))
+                            .cross_align(Alignment::Center)
+                            .main_align(Alignment::End)
+                            .child(
+                                StoatButton::new()
+                                    .corner_radius(40.)
+                                    .on_press({
+                                        let attachments = self.attachments.clone();
 
-                                    move |_| {
-                                        spawn(async move {
-                                            attachments.prompt().await;
-                                        });
-                                    }
-                                })
-                                .child(
-                                    rect()
-                                        .width(Size::px(40.))
-                                        .height(Size::px(40.))
-                                        .center()
-                                        .child(
-                                            svg(plus()).width(Size::px(24.)).height(Size::px(24.)),
-                                        ),
-                                ),
-                        ),
+                                        move |_| {
+                                            spawn(async move {
+                                                attachments.prompt().await;
+                                            });
+                                        }
+                                    })
+                                    .child(
+                                        rect()
+                                            .width(Size::px(40.))
+                                            .height(Size::px(40.))
+                                            .center()
+                                            .child(
+                                                svg(plus())
+                                                    .width(Size::px(24.))
+                                                    .height(Size::px(24.)),
+                                            ),
+                                    ),
+                            ),
                     )
                     .child(
                         rect()
@@ -266,7 +272,25 @@ impl Component for Textbox {
                             .on_press({
                                 move |_| {
                                     floating.set(Some(
-                                        EmojiPicker::new(move |e| println!("{e:?}")).into_element(),
+                                        EmojiPicker::new(move |e: String| {
+                                            floating.set(None);
+
+                                            let e = if e.len() == 26 { format!(":{e}:") } else { e };
+
+                                            let mut editor = editable.editor_mut().write();
+                                            let selection = editor.get_selection_range();
+                                            if let Some((start, end)) = selection {
+                                                editor.remove(start..end);
+                                                editor.move_cursor_to(start);
+                                            }
+                                            let cursor_pos = editor.cursor_pos();
+                                            let last_idx = e.encode_utf16().count() + cursor_pos;
+                                            editor.insert(&e, cursor_pos);
+                                            editor.selection_mut().move_to(last_idx);
+                                            editor.selection_mut().set_as_cursor();
+
+                                        })
+                                        .into_element(),
                                     ));
                                 }
                             })
@@ -279,23 +303,23 @@ impl Component for Textbox {
                             ),
                     ),
             )
-            // .child(
-            //         StoatButton::new()
-            //             .corner_radius(CornerRadius {
-            //                 top_left: 12.,
-            //                 top_right: 28.,
-            //                 bottom_right: 28.,
-            //                 bottom_left: 12.,
-            //                 smoothing: 0.,
-            //             })
-            //             .background(theme.md.surface_container_high.as_argb_u32())
-            //             .child(
-            //                 rect().height(Size::px(height())).padding((0., 8.)).center().child(
-            //                     svg(send_horizontal())
-            //                         .width(Size::px(24.))
-            //                         .height(Size::px(24.)),
-            //                 ),
-            //             ),
-            // )
+        // .child(
+        //         StoatButton::new()
+        //             .corner_radius(CornerRadius {
+        //                 top_left: 12.,
+        //                 top_right: 28.,
+        //                 bottom_right: 28.,
+        //                 bottom_left: 12.,
+        //                 smoothing: 0.,
+        //             })
+        //             .background(theme.md.surface_container_high.as_argb_u32())
+        //             .child(
+        //                 rect().height(Size::px(height())).padding((0., 8.)).center().child(
+        //                     svg(send_horizontal())
+        //                         .width(Size::px(24.))
+        //                         .height(Size::px(24.)),
+        //                 ),
+        //             ),
+        // )
     }
 }

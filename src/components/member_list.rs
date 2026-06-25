@@ -403,6 +403,22 @@ impl Component for MemberListMember {
                             .expanded()
                             .cross_align(Alignment::Center)
                             .spacing(8.)
+                            .on_secondary_down({
+                                let user = self.user.clone();
+
+                                move |e| {
+                                    ContextMenu::open_from_event(
+                                        &e,
+                                        Menu::new().child(MenuButton::new().child("Copy User ID").on_press({
+                                            let user = user.clone();
+
+                                            move |_| {
+                                                Clipboard::set(user.read().id.clone()).unwrap();
+                                            }
+                                        })),
+                                    );
+                                }
+                            })
                             .child(
                                 Avatar::new(self.user.clone(), Some(self.member.clone()), 32.)
                                     .presence(true),

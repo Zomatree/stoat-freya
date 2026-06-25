@@ -92,8 +92,8 @@ fn main() {
         LaunchConfig::new()
             .with_window(
                 WindowConfig::new(app)
-                    .with_title("Stoat")
-                    .with_app_id("live.zomatree.stoat")
+                    .with_title("Ermine - Stoat")
+                    .with_app_id("live.zomatree.ermine")
                     .with_size(1280., 720.)
                     .with_decorations(true)
             )
