@@ -4144,9 +4144,9 @@ dependencies = [
 
 [[package]]
 name = "libwebrtc"
-version = "0.3.37"
+version = "0.3.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d48c4b25dbca31dc01d68f81bfe68e84549b7b4e26969dedd01482e20613eb1"
+checksum = "fc0088d99d0757751962e6d60e8fcd42b1bfb5affd2b25da45e0735443330905"
 dependencies = [
  "cxx",
  "jni 0.21.1",
@@ -4207,9 +4207,9 @@ checksum = "92daf443525c4cce67b150400bc2316076100ce0b3686209eb8cf3c31612e6f0"
 
 [[package]]
 name = "livekit"
-version = "0.7.46"
+version = "0.7.49"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "40408235dcb0ef0502551692cf1c1a859646cb266ae973ea9d555b15285845d7"
+checksum = "1781bedafa2ffaf1f1696f6f81c5bff64272638608313a37882ce6f59cd9589e"
 dependencies = [
  "base64 0.22.1",
  "bmrng",
@@ -4236,9 +4236,9 @@ dependencies = [
 
 [[package]]
 name = "livekit-api"
-version = "0.5.2"
+version = "0.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "394e625d8da0d89f811b7b30beb741df18e75077a5226176cec708957b07a1fa"
+checksum = "d2150a76435ae6129101ab74e75d8fd0bc24fc57d71477f59c67fad9b0541d85"
 dependencies = [
  "async-tungstenite 0.29.1",
  "base64 0.21.7",
@@ -4271,9 +4271,9 @@ dependencies = [
 
 [[package]]
 name = "livekit-datatrack"
-version = "0.1.8"
+version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6618b1fe027f45b2ddd42794f3a263e07a69949fec0ed5f8d0a13e394d19525f"
+checksum = "56a5e0754d2b6e00a2a3b984a2a512de4b46d2f1998f011043e9925bcae99a28"
 dependencies = [
  "anyhow",
  "bytes",
@@ -4292,9 +4292,9 @@ dependencies = [
 
 [[package]]
 name = "livekit-protocol"
-version = "0.7.8"
+version = "0.7.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "565d83442aa99684dba5d0841fa342eb572fbd916ba2aa5e92801ecf76620026"
+checksum = "35609e3b2a077801c198f4f3de70f6cee4f2ba189d02b8876b99b96be43d0284"
 dependencies = [
  "pbjson",
  "pbjson-types",
