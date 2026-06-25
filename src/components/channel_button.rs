@@ -81,7 +81,7 @@ impl Component for ChannelButton {
                 move |e| {
                     ContextMenu::open_from_event(
                         &e,
-                        Menu::new().child(MenuButton::new().child("Copy Channel ID").on_press({
+                        Menu::new().child(MenuButton::new().child(label().font_size(14.).text("Copy Channel ID")).on_press({
                             let channel = channel.clone();
 
                             move |_| {

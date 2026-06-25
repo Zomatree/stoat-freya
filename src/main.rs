@@ -12,6 +12,7 @@ pub mod types;
 pub mod utils;
 pub mod websocket;
 pub mod theme;
+pub mod permissions;
 
 pub use color::*;
 pub use config::*;
@@ -21,6 +22,7 @@ pub use material::*;
 pub use state::*;
 pub use utils::*;
 pub use theme::*;
+pub use permissions::*;
 
 use crate::components::{
     HttpProvider, MaterialThemeProvider, Root, StoatButtonColorsThemePreference, StoatButtonLayoutThemePreference

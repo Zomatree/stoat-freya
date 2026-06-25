@@ -9,7 +9,7 @@ use freya::{
 use crate::{
     AppChannel, SettingsPage,
     components::{
-        AccountSettings, AppearanceSettings, Avatar, ProfileSettings, StoatButton, StoatButtonColorsThemePartialExt, StoatButtonLayoutThemePartialExt
+        AccountSettings, AppearanceSettings, Avatar, ProfileSettings, SourceCodeSettings, StoatButton, StoatButtonColorsThemePartialExt, StoatButtonLayoutThemePartialExt
     },
     theme::Theme,
     use_config, use_material_theme,
@@ -163,7 +163,7 @@ impl Component for Settings {
                                                         "Coming soon!".into_element()
                                                     }
                                                     SettingsPage::SourceCode => {
-                                                        "Coming soon!".into_element()
+                                                        SourceCodeSettings {}.into_element()
                                                     }
                                                     SettingsPage::Advanced => {
                                                         "Coming soon!".into_element()

@@ -73,6 +73,8 @@ mod channel_description_modal;
 mod overview_channel_settings;
 mod dropdown;
 mod create_role_modal;
+mod source_code_settings;
+mod delete_message_modal;
 
 pub use app::*;
 pub use appearance_settings::*;
@@ -149,3 +151,5 @@ pub use channel_description_modal::*;
 pub use overview_channel_settings::*;
 pub use dropdown::*;
 pub use create_role_modal::*;
+pub use source_code_settings::*;
+pub use delete_message_modal::*;

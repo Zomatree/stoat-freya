@@ -94,6 +94,7 @@ impl Component for Textbox {
                             .padding((4., 0.))
                             .child(
                                 paragraph()
+                                    .a11y_focusable(Focusable::Enabled)
                                     .line_height(1.4)
                                     .width(Size::Fill)
                                     .a11y_id(a11y_id)
@@ -109,6 +110,12 @@ impl Component for Textbox {
                                             .map(|selection| vec![selection])
                                             .unwrap_or_default(),
                                     )
+                                    .on_pointer_enter(move |_| {
+                                        Cursor::set(CursorIcon::Text);
+                                    })
+                                    .on_pointer_leave(move |_| {
+                                        Cursor::set(CursorIcon::default());
+                                    })
                                     .on_mouse_down(move |e: Event<MouseEventData>| {
                                         a11y_id.request_focus();
                                         editable.process_event(EditableEvent::Down {
@@ -275,7 +282,8 @@ impl Component for Textbox {
                                         EmojiPicker::new(move |e: String| {
                                             floating.set(None);
 
-                                            let e = if e.len() == 26 { format!(":{e}:") } else { e };
+                                            let e =
+                                                if e.len() == 26 { format!(":{e}:") } else { e };
 
                                             let mut editor = editable.editor_mut().write();
                                             let selection = editor.get_selection_range();
@@ -288,7 +296,6 @@ impl Component for Textbox {
                                             editor.insert(&e, cursor_pos);
                                             editor.selection_mut().move_to(last_idx);
                                             editor.selection_mut().set_as_cursor();
-
                                         })
                                         .into_element(),
                                     ));

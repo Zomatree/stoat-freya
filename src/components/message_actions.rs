@@ -1,19 +1,23 @@
+use std::time::Duration;
+
+use chumsky::container::Seq;
 use freya::{
+    animation::{AnimColor, AnimatedValue, Ease, OnChange, OnCreation, use_animation},
     icons::lucide::{ellipsis_vertical, pencil, smile, trash_2, undo},
     prelude::*,
     radio::use_radio,
 };
 use stoat_models::v0;
+use stoat_permissions::{ChannelPermission, PermissionValue};
 
 use crate::{
-    AppChannel,
+    AppChannel, PermissionQuery, calculate_channel_permissions,
     components::{
-        EmojiPicker, MessageModel, ReplyController, StoatButton, StoatButtonColorsThemePartialExt,
-        use_floating,
+        EmojiPicker, MessageModel, ModalValue, ReplyController, StoatButton, StoatButtonColorsThemePartialExt, use_floating, use_modals
     },
     http,
     theme::Theme,
-    use_material_theme,
+    use_material_theme, user_permissions_query,
 };
 
 #[derive(PartialEq)]
@@ -60,10 +64,15 @@ impl Component for MessageActions {
         let radio = use_radio(AppChannel::UserId);
         let theme = use_material_theme();
         let user_id = radio.slice_current(|state| state.user_id.as_ref().unwrap());
+
+        let servers = radio.slice(AppChannel::Servers, |state| &state.servers);
+        let members = radio.slice(AppChannel::Members, |state| &state.members);
+
         let mut editing_message = radio.slice_mut(AppChannel::EditingMessage, |state| {
             &mut state.editing_message
         });
         let mut floating = use_floating();
+        let mut modals = use_modals();
 
         let mut hovering = use_state(|| false);
         let mut hover_actions = use_state(|| false);
@@ -80,9 +89,64 @@ impl Component for MessageActions {
             }
         });
 
+        let change_background = use_reactive(&(hovering() || hover_actions()));
+
+        let background = use_animation(move |conf| {
+            conf.on_change(OnChange::Rerun);
+            conf.on_creation(OnCreation::Nothing);
+
+            let start = if mentions_user() {
+                theme.md.primary_container.as_argb_u32().into()
+            } else {
+                Color::TRANSPARENT
+            };
+
+            let anim = AnimColor::new(start, theme.md.surface_container.as_argb_u32())
+                .duration(Duration::from_secs_f32(0.1))
+                .ease(Ease::InOut);
+
+            if change_background() {
+                anim
+            } else {
+                anim.into_reversed()
+            }
+        });
+
+        let permissions = use_state(|| PermissionValue::from_raw(0));
+
+        use_side_effect({
+            let radio = radio.clone();
+            let channel = self.channel.clone();
+
+            move || {
+                let radio = radio.clone();
+                let channel = channel.clone();
+
+                spawn(async move {
+                    let mut query =
+                        user_permissions_query(radio.clone()).channel(channel.read().clone());
+
+                    let value = calculate_channel_permissions(&mut query).await;
+                    permissions.clone().set(value);
+                });
+            }
+        });
+
+        let mut shift = use_state(|| false);
+
         rect()
             .layout(self.layout.clone())
             .width(Size::Fill)
+            .on_global_key_down(move |e: Event<KeyboardEventData>| {
+                if e.key == Key::Named(NamedKey::Shift) {
+                    shift.set(true);
+                }
+            })
+            .on_global_key_up(move |e: Event<KeyboardEventData>| {
+                if e.key == Key::Named(NamedKey::Shift) {
+                    shift.set(false);
+                }
+            })
             .on_pointer_over(move |_| {
                 hovering.set(true);
             })
@@ -95,39 +159,46 @@ impl Component for MessageActions {
                     ContextMenu::open_from_event(
                         &e,
                         Menu::new()
-                            .child(MenuButton::new().child("Copy text").on_press({
-                                let message = message.clone();
-                                move |_| {
-                                    if let Some(content) = message.message.content.clone() {
-                                        Clipboard::set(content).unwrap();
-                                    }
-                                }
-                            }))
-                            .child(MenuButton::new().child("Reply").on_press({
-                                let message = message.clone();
-                                let mut replies = replies.clone();
+                            .child(
+                                MenuButton::new()
+                                    .child(label().font_size(14.).text("Copy text"))
+                                    .on_press({
+                                        let message = message.clone();
+                                        move |_| {
+                                            if let Some(content) = message.message.content.clone() {
+                                                Clipboard::set(content).unwrap();
+                                            }
+                                        }
+                                    }),
+                            )
+                            .child(
+                                MenuButton::new()
+                                    .child(label().font_size(14.).text("Reply"))
+                                    .on_press({
+                                        let message = message.clone();
+                                        let mut replies = replies.clone();
 
-                                move |_| {
-                                    replies.add_reply(message.clone(), true);
-                                }
-                            }))
-                            .child(MenuButton::new().child("Copy Message ID").on_press({
-                                let message = message.clone();
-                                move |_| {
-                                    Clipboard::set(message.message.id.clone()).unwrap();
-                                }
-                            })),
+                                        move |_| {
+                                            replies.add_reply(message.clone(), true);
+                                        }
+                                    }),
+                            )
+                            .child(
+                                MenuButton::new()
+                                    .child(label().font_size(14.).text("Copy Message ID"))
+                                    .on_press({
+                                        let message = message.clone();
+                                        move |_| {
+                                            Clipboard::set(message.message.id.clone()).unwrap();
+                                        }
+                                    }),
+                            ),
                     );
                 }
             })
             .corner_radius(12.)
             .children(self.children.clone())
-            .maybe(*mentions_user.read(), |this| {
-                this.background(theme.md.primary_container.as_argb_u32())
-            })
-            .maybe(*hovering.read() || *hover_actions.read(), |this| {
-                this.background(theme.md.surface_container.as_argb_u32())
-            })
+            .background(background.read().value())
             .maybe_child((*hovering.read() || *hover_actions.read()).then(|| {
                 rect()
                     .on_pointer_over(move |_| {
@@ -163,14 +234,12 @@ impl Component for MessageActions {
                                         floating.set(None);
 
                                         spawn_forever(async move {
-                                            println!("1");
                                             println!(
                                                 "{:?}",
                                                 http()
                                                     .react_message(&channel_id, &message_id, &id)
                                                     .await
                                             );
-                                            println!("2");
                                         });
                                     }
                                 })
@@ -191,7 +260,29 @@ impl Component for MessageActions {
                             }
                         })
                     }))
-                    .child(message_actions_button(trash_2(), &theme))
+                    .maybe_child(
+                        (&self.message.message.author == &*user_id.read()
+                            || permissions
+                                .read()
+                                .has_channel_permission(ChannelPermission::ManageMessages))
+                        .then(|| {
+                            message_actions_button(trash_2(), &theme).on_press({
+                                let message = self.message.message.id.clone();
+                                let channel = self.message.message.channel.clone();
+
+                                move |_| {
+                                    let channel = channel.clone();
+                                    let message = message.clone();
+
+                                    if shift() {
+                                        spawn(async move { http().delete_message(&channel, &message).await.unwrap(); });
+                                    } else {
+                                    modals.write().push_modal(ModalValue::DeleteMessage { channel, message });
+                                    }
+                                }
+                            })
+                        }),
+                    )
                     .child(
                         message_actions_button(ellipsis_vertical(), &theme).on_press({
                             let id = self.message.message.id.clone();
@@ -199,15 +290,17 @@ impl Component for MessageActions {
                             move |e| {
                                 ContextMenu::open_from_event(
                                     &e,
-                                    Menu::new().child(MenuButton::new().child("Copy Message ID").on_press(
-                                        {
-                                            let id = id.clone();
+                                    Menu::new().child(
+                                        MenuButton::new()
+                                            .child(label().font_size(14.).text("Copy Message ID"))
+                                            .on_press({
+                                                let id = id.clone();
 
-                                            move |_| {
-                                                Clipboard::set(id.clone()).unwrap();
-                                            }
-                                        },
-                                    )),
+                                                move |_| {
+                                                    Clipboard::set(id.clone()).unwrap();
+                                                }
+                                            }),
+                                    ),
                                 );
                             }
                         }),

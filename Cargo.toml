@@ -44,6 +44,7 @@ itertools = { version = "*" }
 material-colors = { git = "https://github.com/Aiving/material-colors", rev = "3fe7f52" }
 open = "*"
 livekit = { version = "*", features = ["native-tls"] }
+async-trait = "*"
 
 stoat-models = { package = "revolt-models", version = "0.13.6", default-features = false, features = ["serde", "partials"] }
 stoat-permissions = { package = "revolt-permissions", version = "0.13.6" }

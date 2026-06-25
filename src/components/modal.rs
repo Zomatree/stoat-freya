@@ -3,24 +3,21 @@ use std::{cell::RefCell, rc::Rc};
 use freya::prelude::*;
 
 use crate::{
-    components::{ChannelDescriptionModal, CreateJoinServerModal, CreateRoleModal, CreateServerModal, JoinServerModal, ServerInfoModal, StoatButton, StoatButtonLayoutThemePartialExt},
+    components::{
+        ChannelDescriptionModal, CreateJoinServerModal, CreateRoleModal, CreateServerModal, DeleteMessageModal, JoinServerModal, ServerInfoModal, StoatButton, StoatButtonLayoutThemePartialExt
+    },
     use_material_theme,
 };
 
 #[derive(PartialEq, Clone, Debug)]
 pub enum ModalValue {
-    ServerInfo {
-        server: String
-    },
+    ServerInfo { server: String },
     CreateJoinServer,
     CreateServer,
     JoinServer,
-    ChannelDescription {
-        channel: String,
-    },
-    CreateRole {
-        server: String,
-    }
+    ChannelDescription { channel: String },
+    CreateRole { server: String },
+    DeleteMessage { channel: String, message: String },
 }
 
 #[derive(Clone)]
@@ -51,21 +48,20 @@ pub struct ModalManager {}
 
 impl Component for ModalManager {
     fn render(&self) -> impl IntoElement {
-        let controller = use_provide_root_context(|| State::create(ModalController { modal: None }));
+        let controller =
+            use_provide_root_context(|| State::create(ModalController { modal: None }));
         // let controller = use_modals();
 
         let modal = controller.read().get_modal();
 
         println!("{:?}", modal);
 
-        rect()
-            .layer(Layer::Overlay)
-            .maybe_child(modal.map(|value| {
-                Modal {
-                    value: value.clone(),
-                }
-                .into_element()
-            }))
+        rect().layer(Layer::Overlay).maybe_child(modal.map(|value| {
+            Modal {
+                value: value.clone(),
+            }
+            .into_element()
+        }))
     }
 }
 
@@ -85,47 +81,54 @@ impl Component for Modal {
             }
         };
 
-        rect()
-            .position(Position::new_global())
-            .child(
-                rect()
-                    .child(
-                        rect()
-                            .on_press(move |_| {
-                                controller.write().pop_modal();
-                            })
-                            .position(Position::new_global().top(0.).left(0.))
-                            .height(Size::window_percent(100.))
-                            .width(Size::window_percent(100.))
-                            .background(0x99000000),
-                    )
-                    .child(
-                        rect()
-                            .position(Position::new_global().top(0.).left(0.))
-                            .height(Size::window_percent(100.))
-                            .width(Size::window_percent(100.))
-                            .center()
-                            .child(
-                                rect()
-                                    .a11y_role(AccessibilityRole::Dialog)
-                                    .corner_radius(28.)
-                                    .background(theme.md.surface_container_high.as_argb_u32())
-                                    .color(theme.md.on_surface.as_argb_u32())
-                                    .min_width(Size::px(280.))
-                                    .max_width(Size::px(560.))
-                                    .padding(24.)
-                                    .on_global_key_down(on_global_key_down)
-                                    .child(match self.value.clone() {
-                                        ModalValue::ServerInfo { server } => ServerInfoModal { server }.into_element(),
-                                        ModalValue::CreateJoinServer => CreateJoinServerModal { }.into_element(),
-                                        ModalValue::CreateServer => CreateServerModal { }.into_element(),
-                                        ModalValue::JoinServer => JoinServerModal { }.into_element(),
-                                        ModalValue::ChannelDescription { channel } => ChannelDescriptionModal { channel }.into_element(),
-                                        ModalValue::CreateRole { server } => CreateRoleModal { server }.into_element(),
-                                    }),
-                            ),
-                    ),
-            )
+        rect().position(Position::new_global()).child(
+            rect()
+                .child(
+                    rect()
+                        .on_press(move |_| {
+                            controller.write().pop_modal();
+                        })
+                        .position(Position::new_global().top(0.).left(0.))
+                        .height(Size::window_percent(100.))
+                        .width(Size::window_percent(100.))
+                        .background(0x99000000),
+                )
+                .child(
+                    rect()
+                        .position(Position::new_global().top(0.).left(0.))
+                        .height(Size::window_percent(100.))
+                        .width(Size::window_percent(100.))
+                        .center()
+                        .child(
+                            rect()
+                                .a11y_role(AccessibilityRole::Dialog)
+                                .corner_radius(28.)
+                                .background(theme.md.surface_container_high.as_argb_u32())
+                                .color(theme.md.on_surface.as_argb_u32())
+                                .min_width(Size::px(280.))
+                                .max_width(Size::px(560.))
+                                .padding(24.)
+                                .on_global_key_down(on_global_key_down)
+                                .child(match self.value.clone() {
+                                    ModalValue::ServerInfo { server } => {
+                                        ServerInfoModal { server }.into_element()
+                                    }
+                                    ModalValue::CreateJoinServer => {
+                                        CreateJoinServerModal {}.into_element()
+                                    }
+                                    ModalValue::CreateServer => CreateServerModal {}.into_element(),
+                                    ModalValue::JoinServer => JoinServerModal {}.into_element(),
+                                    ModalValue::ChannelDescription { channel } => {
+                                        ChannelDescriptionModal { channel }.into_element()
+                                    }
+                                    ModalValue::CreateRole { server } => {
+                                        CreateRoleModal { server }.into_element()
+                                    }
+                                    ModalValue::DeleteMessage { channel, message } => DeleteMessageModal { channel, message }.into_element()
+                                }),
+                        ),
+                ),
+        )
     }
 }
 
@@ -182,20 +185,13 @@ impl Dialog {
         self
     }
 
-    pub fn default_action(
-        mut self,
-        title: &'static str,
-    ) -> Self {
+    pub fn default_action(mut self, title: &'static str) -> Self {
         self.actions.push((title, None));
 
         self
     }
 
-    pub fn action(
-        mut self,
-        title: &'static str,
-        callback: impl Into<DialogAction>,
-    ) -> Self {
+    pub fn action(mut self, title: &'static str, callback: impl Into<DialogAction>) -> Self {
         self.actions.push((title, Some(callback.into())));
 
         self
@@ -214,7 +210,12 @@ impl Component for Dialog {
                     .margin((0., 0., 16., 0.))
                     .children(self.title.clone()),
             )
-            .child(rect().color(theme.md.on_surface_variant.as_argb_u32()).font_size(14.).children(self.body.clone()))
+            .child(
+                rect()
+                    .color(theme.md.on_surface_variant.as_argb_u32())
+                    .font_size(14.)
+                    .children(self.body.clone()),
+            )
             .child(
                 rect()
                     .margin((24., 0., 0., 0.))
@@ -225,20 +226,26 @@ impl Component for Dialog {
                     .children(self.actions.iter().cloned().map(|(title, callback)| {
                         StoatButton::new()
                             .corner_radius(20.)
-                            .on_press(move |_| if let Some(callback) = &callback {
-                                if callback.call() {
+                            .on_press(move |_| {
+                                if let Some(callback) = &callback {
+                                    if callback.call() {
+                                        controller.write().pop_modal();
+                                    }
+                                } else {
                                     controller.write().pop_modal();
                                 }
-                            } else {
-                                controller.write().pop_modal();
                             })
                             .child(
-                                rect().padding((0., 16.)).height(Size::px(40.)).center().child(
-                                    label()
-                                        .color(theme.md.primary.as_argb_u32())
-                                        .font_size(14.)
-                                        .text(title),
-                                ),
+                                rect()
+                                    .padding((0., 16.))
+                                    .height(Size::px(40.))
+                                    .center()
+                                    .child(
+                                        label()
+                                            .color(theme.md.primary.as_argb_u32())
+                                            .font_size(14.)
+                                            .text(title),
+                                    ),
                             )
                             .into_element()
                     })),

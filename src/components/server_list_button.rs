@@ -98,7 +98,7 @@ impl Component for ServerListButton {
                 move |e| {
                     ContextMenu::open_from_event(
                         &e,
-                        Menu::new().child(MenuButton::new().child("Copy Server ID").on_press({
+                        Menu::new().child(MenuButton::new().child(label().font_size(14.).text("Copy Server ID")).on_press({
                             let server = server.clone();
 
                             move |_| {

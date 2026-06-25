@@ -48,6 +48,17 @@ impl Component for MessageList {
 
         let mut at_top = use_state(|| false);
         let mut at_bottom = use_state(|| false);
+        let mut autoscroll = use_state(|| false);
+
+        use_side_effect_with_deps(&self.children, {
+            let mut controller = self.controller.clone();
+
+            move |_| {
+                if autoscroll() {
+                    controller.scroll_to(ScrollPosition::End, Direction::Vertical);
+                }
+            }
+        });
 
         rect()
             .on_sized(move |e: Event<SizedEventData>| list_viewport.set_if_modified(e.area))
@@ -93,6 +104,11 @@ impl Component for MessageList {
                             })
                             .height(Size::px(100.))
                             .child("bottom")
+                    }))
+                    .child(rect().height(Size::px(1.)).width(Size::px(1.)).on_sized({
+                        move |e: Event<SizedEventData>| {
+                            autoscroll.set(list_viewport.read().intersects(&e.visible_area));
+                        }
                     })),
             )
     }

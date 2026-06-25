@@ -409,7 +409,7 @@ impl Component for MemberListMember {
                                 move |e| {
                                     ContextMenu::open_from_event(
                                         &e,
-                                        Menu::new().child(MenuButton::new().child("Copy User ID").on_press({
+                                        Menu::new().child(MenuButton::new().child(label().font_size(14.).text("Copy User ID")).on_press({
                                             let user = user.clone();
 
                                             move |_| {

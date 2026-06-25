@@ -316,7 +316,7 @@ pub enum AppChannel {
 
 impl RadioChannel<AppState> for AppChannel {}
 
-type AppStation = RadioStation<AppState, AppChannel>;
+pub type AppStation = RadioStation<AppState, AppChannel>;
 
 macro_rules! set_enum_varient_values {
     ($enum: ident, $key: ident, $value: expr, ($($varient: path),+)) => {

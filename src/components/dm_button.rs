@@ -5,7 +5,8 @@ use stoat_models::v0;
 
 use crate::{
     AppChannel,
-    components::{Avatar, HomeSelection, StoatButton, StoatButtonLayoutThemePartialExt, image}, use_material_theme,
+    components::{Avatar, HomeSelection, StoatButton, StoatButtonLayoutThemePartialExt, image},
+    use_material_theme,
 };
 
 #[derive(PartialEq)]
@@ -20,53 +21,101 @@ impl Component for DMButton {
         let user_id = radio.read().user_id.clone().unwrap();
         let theme = use_material_theme();
 
-        StoatButton::new()
-            .corner_radius(42.)
-            .child(rect()
-            .padding((0., 8., 0., 8.))
-            .spacing(8.)
-            .height(Size::px(42.))
-            .width(Size::Fill)
-            .main_align(Alignment::Center)
-            .color(theme.md.outline.as_argb_u32())
-            .maybe(
-                self.selection.read().channel_id() == Some(self.channel.read().id()),
-                |btn| btn.background(theme.md.primary_container.as_argb_u32()).color(theme.md.on_primary_container.as_argb_u32()),
-            )
-            .child(match self.channel.read().clone() {
-                v0::Channel::DirectMessage { recipients, .. } => {
-                    let other = recipients
-                        .iter()
-                        .find(|&id| id != &user_id)
-                        .unwrap()
-                        .clone();
-
-                    let user = radio.slice(AppChannel::Users, move |state| {
-                        state.users.get(&other).unwrap()
-                    });
-
-                    DMDirectMessageButton {
-                        user: user.into_readable(),
-                    }
-                    .into_element()
-                }
-                v0::Channel::Group { .. } => DMGroupButton {
-                    channel: self.channel.clone(),
-                }
-                .into_element(),
-                _ => unreachable!(),
-            })
-        )
-            .on_press({
+        rect()
+            .on_secondary_down({
                 let channel = self.channel.clone();
-                let mut selection = self.selection.clone();
+                let radio = radio.clone();
+                let user_id = user_id.clone();
 
-                move |_| {
-                    let id = channel.read().id().to_string();
+                move |e| {
+                    ContextMenu::open_from_event(
+                        &e,
+                        match &*channel.read() {
+                            v0::Channel::DirectMessage { recipients, .. } => Menu::new().child(
+                                MenuButton::new().child(label().font_size(14.).text("Copy User ID")).on_press({
+                                    let other = recipients
+                                        .iter()
+                                        .find(|&id| id != &user_id)
+                                        .unwrap()
+                                        .clone();
 
-                    *selection.write() = HomeSelection::DM(id);
+                                    let user = radio.slice(AppChannel::Users, move |state| {
+                                        state.users.get(&other).unwrap()
+                                    });
+
+                                    move |_| {
+                                        Clipboard::set(user.read().id.clone()).unwrap();
+                                    }
+                                }),
+                            ),
+                            v0::Channel::Group { id, .. } => Menu::new().child(
+                                MenuButton::new().child(label().font_size(14.).text("Copy Channel ID")).on_press({
+                                    let id = id.clone();
+
+                                    move |_| {
+                                        Clipboard::set(id.clone()).unwrap();
+                                    }
+                                }),
+                            ),
+                            _ => unreachable!()
+                        },
+                    );
                 }
             })
+            .child(
+                StoatButton::new()
+                    .corner_radius(42.)
+                    .child(
+                        rect()
+                            .padding((0., 8., 0., 8.))
+                            .spacing(8.)
+                            .height(Size::px(42.))
+                            .width(Size::Fill)
+                            .main_align(Alignment::Center)
+                            .color(theme.md.outline.as_argb_u32())
+                            .maybe(
+                                self.selection.read().channel_id()
+                                    == Some(self.channel.read().id()),
+                                |btn| {
+                                    btn.background(theme.md.primary_container.as_argb_u32())
+                                        .color(theme.md.on_primary_container.as_argb_u32())
+                                },
+                            )
+                            .child(match self.channel.read().clone() {
+                                v0::Channel::DirectMessage { recipients, .. } => {
+                                    let other = recipients
+                                        .iter()
+                                        .find(|&id| id != &user_id)
+                                        .unwrap()
+                                        .clone();
+
+                                    let user = radio.slice(AppChannel::Users, move |state| {
+                                        state.users.get(&other).unwrap()
+                                    });
+
+                                    DMDirectMessageButton {
+                                        user: user.into_readable(),
+                                    }
+                                    .into_element()
+                                }
+                                v0::Channel::Group { .. } => DMGroupButton {
+                                    channel: self.channel.clone(),
+                                }
+                                .into_element(),
+                                _ => unreachable!(),
+                            }),
+                    )
+                    .on_press({
+                        let channel = self.channel.clone();
+                        let mut selection = self.selection.clone();
+
+                        move |_| {
+                            let id = channel.read().id().to_string();
+
+                            *selection.write() = HomeSelection::DM(id);
+                        }
+                    }),
+            )
     }
 }
 
@@ -87,9 +136,7 @@ impl Component for DMDirectMessageButton {
             .height(Size::Fill)
             .cross_align(Alignment::Center)
             .spacing(8.)
-            .child(
-                Avatar::new(self.user.clone(), None, 32.).presence(true)
-            )
+            .child(Avatar::new(self.user.clone(), None, 32.).presence(true))
             .child(
                 rect()
                     .child(
