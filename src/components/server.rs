@@ -5,8 +5,10 @@ use stoat_models::v0;
 
 use crate::{
     AppChannel, ServerSettingsPage,
-    components::{Channel, ChannelList, StoatButton, StoatButtonLayoutThemePartialExt, image},
-    theme::Theme,
+    components::{
+        Channel, ChannelList, ModalValue, StoatButton, StoatButtonLayoutThemePartialExt, image,
+        use_modals,
+    },
     use_config, use_material_theme,
 };
 
@@ -20,25 +22,13 @@ impl Component for Server {
         let config = use_config();
         let radio = use_radio(AppChannel::SelectedChannel);
         let theme = use_material_theme();
-
-        let mut show_server_info = use_state(|| false);
+        let mut modals = use_modals();
 
         let selected_channel = radio.slice_current(|state| &state.selected_channel);
         let channels = radio.slice(AppChannel::Channels, |state| &state.channels);
         let server_settings = radio.slice_mut(AppChannel::ServerSettingsPage, |state| {
             &mut state.server_settings_page
         });
-
-        let open_server_settings = {
-            let server = self.server.clone();
-            let server_settings = server_settings.clone();
-
-            move |_| {
-                let id = server.read().id.clone();
-
-                *server_settings.clone().write() = Some((id, ServerSettingsPage::default()));
-            }
-        };
 
         let server_header = rect()
             .horizontal()
@@ -54,7 +44,18 @@ impl Component for Server {
             .child(
                 StoatButton::new()
                     .corner_radius(16.)
-                    .on_press(open_server_settings.clone())
+                    .on_press({
+                        let server = self.server.clone();
+
+                        move |e: Event<PressEventData>| {
+                            e.stop_propagation();
+
+                            let id = server.read().id.clone();
+
+                            *server_settings.clone().write() =
+                                Some((id, ServerSettingsPage::default()));
+                        }
+                    })
                     .child(
                         rect()
                             .padding(4.)
@@ -80,7 +81,14 @@ impl Component for Server {
                     .child(
                         rect()
                             .margin((8., 8., 0., 8.))
-                            .on_press(move |_| show_server_info.set(true))
+                            .on_press({
+                                let id = self.server.read().id.clone();
+                                move |_| {
+                                    modals
+                                        .write()
+                                        .push_modal(ModalValue::ServerInfo { server: id.clone() })
+                                }
+                            })
                             .on_pointer_enter(move |_| {
                                 Cursor::set(CursorIcon::Pointer);
                             })
@@ -147,80 +155,9 @@ impl Component for Server {
                     "No selected channel".into_element()
                 },
             )
-            .child(
-                Popup::new()
-                    .background(theme.md.surface_container_high.as_argb_u32())
-                    .color(theme.md.on_surface.as_argb_u32())
-                    .padding(24.)
-                    .width(Size::px(560.))
-                    .on_close_request(move |_| show_server_info.set(false))
-                    .maybe(show_server_info(), move |popup| {
-                        let server = self.server.read();
-
-                        popup
-                            .child(
-                                label()
-                                    .font_size(24.)
-                                    .line_height(1.5)
-                                    .text(server.name.clone())
-                                    .margin((0., 0., 16., 0.)),
-                            )
-                            .maybe_child(server.description.clone().map(|description| {
-                                label()
-                                    .color(theme.md.on_surface_variant.as_argb_u32())
-                                    .font_weight(400)
-                                    .font_size(14.)
-                                    .text(description)
-                            }))
-                            .child(
-                                rect()
-                                    .font_size(14.)
-                                    .width(Size::Fill)
-                                    .margin((24., 0., 0., 0.))
-                                    .horizontal()
-                                    .main_align(Alignment::End)
-                                    .child(popup_button(
-                                        &theme,
-                                        show_server_info,
-                                        "Settings",
-                                        open_server_settings,
-                                    ))
-                                    .child(popup_button(
-                                        &theme,
-                                        show_server_info,
-                                        "Close",
-                                        move |_| {},
-                                    )),
-                            )
-                    }),
-            )
     }
 
     fn render_key(&self) -> DiffKey {
         (&self.server.peek().id).into()
     }
-}
-
-fn popup_button(
-    theme: &Theme,
-    mut show_server_info: State<bool>,
-    title: &'static str,
-    callback: impl Into<EventHandler<Event<PressEventData>>>,
-) -> StoatButton {
-    let callback = callback.into();
-
-    StoatButton::new()
-        .corner_radius(20.)
-        .on_press(move |e| {
-            show_server_info.set(false);
-            callback.call(e)
-        })
-        .child(
-            rect()
-                .padding((0., 16.))
-                .height(Size::px(40.))
-                .main_align(Alignment::Center)
-                .color(theme.md.primary.as_argb_u32())
-                .child(title),
-        )
 }

@@ -45,8 +45,8 @@ impl Component for Avatar {
                     .aspect_ratio(AspectRatio::Max)
                     .image_cover(ImageCover::Center)
                     .expanded()
-                                .corner_radius(self.size)
-            .overflow(Overflow::Clip)
+                    .corner_radius(self.size)
+                    .overflow(Overflow::Clip)
             } else {
                 ImageViewer::new(
                     http()
@@ -56,8 +56,8 @@ impl Component for Avatar {
                 )
                 .sampling_mode(SamplingMode::Trilinear)
                 .expanded()
-                            .corner_radius(self.size)
-            .overflow(Overflow::Clip)
+                .corner_radius(self.size)
+                .overflow(Overflow::Clip)
             })
             .maybe_child(self.presence.then(|| {
                 let diameter = (12. / 32.) * self.size;
@@ -69,9 +69,9 @@ impl Component for Avatar {
                     v0::Presence::Invisible
                 } else {
                     user.status
-                    .as_ref()
-                    .and_then(|status| status.presence.clone())
-                    .unwrap_or(v0::Presence::Online)
+                        .as_ref()
+                        .and_then(|status| status.presence.clone())
+                        .unwrap_or(v0::Presence::Online)
                 };
 
                 let color = match presence {

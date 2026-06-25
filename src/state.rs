@@ -1,24 +1,28 @@
 use bytes::Bytes;
 use freya::{
     icons::lucide::{
-        banknote, bot_message_square, circle_user_round, cloud, cpu, flag, flask_conical, globe, info, list, mail, message_square_diff, mic, palette, shield_check, smile, user_x
+        banknote, bot_message_square, circle_user_round, cloud, cpu, flag, flask_conical, globe,
+        info, list, mail, message_square_diff, mic, palette, shield_check, smile, user_x,
     },
     prelude::State,
     radio::{RadioChannel, RadioStation},
 };
+use livekit::{PlatformAudio, Room};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet, VecDeque},
     fmt::Debug,
     rc::Rc,
+    sync::Arc,
 };
 
 use stoat_models::v0::{
-    AppendMessage, Channel, Emoji, FieldsChannel, FieldsMessage, FieldsServer, FieldsUser, Member, Message, PartialMessage, RelationshipStatus, Server, User, UserSettings
+    AppendMessage, Channel, Emoji, FieldsChannel, FieldsMessage, FieldsServer, FieldsUser, Member,
+    Message, PartialMessage, RelationshipStatus, Server, User, UserSettings,
 };
 use stoat_result::ErrorType;
 
-use crate::{Config, types::EventV1};
+use crate::{Config, components::SelectedRole, http, types::EventV1};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum ConnectionState {
@@ -87,12 +91,12 @@ impl SettingsPage {
     }
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub enum ServerSettingsPage {
     #[default]
     Overview,
     Emojis,
-    Roles,
+    Roles(Option<SelectedRole>),
     Invites,
     Bans,
 }
@@ -102,7 +106,7 @@ impl ServerSettingsPage {
         match self {
             Self::Overview => "Overview",
             Self::Emojis => "Emojis",
-            Self::Roles => "Roles",
+            Self::Roles(_) => "Roles",
             Self::Invites => "Invites",
             Self::Bans => "Bans",
         }
@@ -112,7 +116,7 @@ impl ServerSettingsPage {
         match self {
             Self::Overview => info(),
             Self::Emojis => smile(),
-            Self::Roles => flag(),
+            Self::Roles(_) => flag(),
             Self::Invites => mail(),
             Self::Bans => user_x(),
         }
@@ -255,6 +259,7 @@ pub struct AppState {
     pub editing_message: Option<EditingMessage>,
     pub server_settings_page: Option<(String, ServerSettingsPage)>,
     pub channel_settings_page: Option<(String, ChannelSettingsPage)>,
+    pub current_room: Option<(Arc<Room>, PlatformAudio)>,
 }
 
 impl AppState {
@@ -306,6 +311,7 @@ pub enum AppChannel {
     MessageHandlers,
     EditingMessage,
     ChannelSettingsPage,
+    CurrentRoom,
 }
 
 impl RadioChannel<AppState> for AppChannel {}
@@ -468,20 +474,30 @@ pub fn ack_message(channel_id: &str, message_id: String, mut station: AppStation
 }
 
 pub fn update_user(user_id: &str, mut station: AppStation, f: impl FnOnce(&mut User)) {
-    if let Some(user) = station.write_channel(AppChannel::Users).users.get_mut(user_id) {
+    if let Some(user) = station
+        .write_channel(AppChannel::Users)
+        .users
+        .get_mut(user_id)
+    {
         f(user);
     }
 }
 
 pub fn insert_emoji(emoji: Emoji, mut station: AppStation) {
-    station.write_channel(AppChannel::Emojis).emojis.insert(emoji.id.clone(), emoji);
+    station
+        .write_channel(AppChannel::Emojis)
+        .emojis
+        .insert(emoji.id.clone(), emoji);
 }
 
 pub fn remove_emoji(emoji_id: &str, mut station: AppStation) {
-    station.write_channel(AppChannel::Emojis).emojis.remove(emoji_id);
+    station
+        .write_channel(AppChannel::Emojis)
+        .emojis
+        .remove(emoji_id);
 }
 
-pub fn update_state(
+pub async fn update_state(
     event: EventV1,
     mut config: State<Config>,
     mut station: RadioStation<AppState, AppChannel>,
@@ -489,7 +505,7 @@ pub fn update_state(
     match event {
         EventV1::Bulk { v } => {
             for e in v {
-                update_state(e, config, station);
+                Box::pin(update_state(e, config, station)).await;
             }
         }
         EventV1::Authenticated => {}
@@ -603,6 +619,26 @@ pub fn update_state(
                     .mentions
                     .insert(message.id);
             }
+        }
+        EventV1::ServerCreate {
+            id,
+            server,
+            channels,
+            emojis,
+            voice_states,
+        } => {
+            insert_server(server, station);
+
+            for channel in channels.into_iter() {
+                insert_channel(channel, station);
+            }
+
+            for emoji in emojis.into_iter() {
+                insert_emoji(emoji, station);
+            }
+            let user_id = station.read().user_id.clone().unwrap();
+            let member = http().fetch_member(&id, &user_id).await.unwrap();
+            insert_member(member, station);
         }
         EventV1::ServerUpdate { id, data, clear } => {
             update_server(&id, station, |server| {
@@ -798,19 +834,32 @@ pub fn update_state(
                 (handle.on_message_append)(channel, id, append)
             }
         }
-        EventV1::UserUpdate { id, data, clear, event_id: _ } => {
+        EventV1::UserUpdate {
+            id,
+            data,
+            clear,
+            event_id: _,
+        } => {
             update_user(&id, station, |user| {
                 user.apply_options(data);
 
                 for field in clear {
                     match field {
                         FieldsUser::Avatar => user.avatar = None,
-                        FieldsUser::StatusText => if let Some(status) = &mut user.status { status.text = None },
-                        FieldsUser::StatusPresence => if let Some(status) = &mut user.status { status.presence = None },
-                        FieldsUser::ProfileContent =>  {},
-                        FieldsUser::ProfileBackground => {},
+                        FieldsUser::StatusText => {
+                            if let Some(status) = &mut user.status {
+                                status.text = None
+                            }
+                        }
+                        FieldsUser::StatusPresence => {
+                            if let Some(status) = &mut user.status {
+                                status.presence = None
+                            }
+                        }
+                        FieldsUser::ProfileContent => {}
+                        FieldsUser::ProfileBackground => {}
                         FieldsUser::DisplayName => user.display_name = None,
-                        FieldsUser::Internal => {},
+                        FieldsUser::Internal => {}
                     }
                 }
             });

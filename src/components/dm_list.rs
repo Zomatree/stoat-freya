@@ -95,144 +95,144 @@ impl Component for DMList {
             channels
         });
 
-        rect().child(
-            rect()
-                .spacing(4.)
-                .child(
-                    rect()
-                        .margin((8., 8., 0., 8.))
-                        .padding((24., 8.0))
-                        .height(Size::px(48.))
-                        .font_size(16)
-                        .child("Conversations"),
-                )
-                .child(
-                    rect()
-                        .padding((0., 8.))
-                        .child(
-                            dmlist_nav_button(
-                                house(),
-                                "Home",
-                                &theme,
-                                &*self.selection.read() == &HomeSelection::Welcome,
-                            )
-                            .on_press({
-                                let mut selection = self.selection.clone();
+        rect()
+            .spacing(4.)
+            .padding((0., 0., 0., 8.))
+            .child(
+                rect()
+                    // .margin((8., 8., 0., 8.))
+                    .padding((24., 8.0))
+                    .font_size(16)
+                    .child("Conversations"),
+            )
+            .child(
+                rect()
+                    .padding((0., 8.))
+                    .spacing(5.)
+                    .child(
+                        dmlist_nav_button(
+                            house(),
+                            "Home",
+                            &theme,
+                            &*self.selection.read() == &HomeSelection::Welcome,
+                        )
+                        .on_press({
+                            let mut selection = self.selection.clone();
 
-                                move |_| {
-                                    *selection.write() = HomeSelection::Welcome;
-                                }
+                            move |_| {
+                                *selection.write() = HomeSelection::Welcome;
+                            }
+                        }),
+                    )
+                    .child(
+                        dmlist_nav_button(
+                            users_round(),
+                            "Friends",
+                            &theme,
+                            &*self.selection.read() == &HomeSelection::Friends,
+                        )
+                        .on_press({
+                            let mut selection = self.selection.clone();
+
+                            move |_| {
+                                *selection.write() = HomeSelection::Friends;
+                            }
+                        }),
+                    )
+                    .child(
+                        dmlist_nav_button(
+                            notebook_text(),
+                            "Saved Notes",
+                            &theme,
+                            saved_messages.read().as_ref().is_some_and(|c| {
+                                self.selection
+                                    .read()
+                                    .channel_id()
+                                    .is_some_and(|s| s == c.id())
                             }),
                         )
-                        .child(
-                            dmlist_nav_button(
-                                users_round(),
-                                "Friends",
-                                &theme,
-                                &*self.selection.read() == &HomeSelection::Friends,
-                            )
-                            .on_press({
-                                let mut selection = self.selection.clone();
+                        .on_press({
+                            let mut radio = radio.clone();
+                            let saved_messages = saved_messages.clone();
+                            let mut selection = self.selection.clone();
 
-                                move |_| {
-                                    *selection.write() = HomeSelection::Friends;
-                                }
-                            }),
-                        )
-                        .child(
-                            dmlist_nav_button(
-                                notebook_text(),
-                                "Saved Notes",
-                                &theme,
-                                saved_messages.read().as_ref().is_some_and(|c| {
-                                    self.selection
-                                        .read()
-                                        .channel_id()
-                                        .is_some_and(|s| s == c.id())
-                                }),
-                            )
-                            .on_press({
-                                let mut radio = radio.clone();
-                                let saved_messages = saved_messages.clone();
-                                let mut selection = self.selection.clone();
+                            move |_| {
+                                spawn(async move {
+                                    let id = if let Some(channel) = &*saved_messages.peek() {
+                                        channel.id().to_string()
+                                    } else {
+                                        let dm = http()
+                                            .open_dm(&radio.peek_state().user_id.clone().unwrap())
+                                            .await
+                                            .unwrap();
+                                        let id = dm.id().to_string();
 
-                                move |_| {
-                                    spawn(async move {
-                                        let id = if let Some(channel) = &*saved_messages.peek() {
-                                            channel.id().to_string()
-                                        } else {
-                                            let dm = http()
-                                                .open_dm(
-                                                    &radio.peek_state().user_id.clone().unwrap(),
-                                                )
-                                                .await
-                                                .unwrap();
-                                            let id = dm.id().to_string();
+                                        radio
+                                            .write_channel(AppChannel::Channels)
+                                            .channels
+                                            .insert(id.clone(), dm);
 
-                                            radio
-                                                .write_channel(AppChannel::Channels)
-                                                .channels
-                                                .insert(id.clone(), dm);
+                                        id
+                                    };
 
-                                            id
-                                        };
+                                    *selection.write() = HomeSelection::DM(id);
+                                });
+                            }
+                        }),
+                    ),
+            )
+            .child(
+                rect()
+                    .child(
+                        label()
+                            .margin((28., 16., 8., 16.))
+                            .text("Direct Messages")
+                            .font_size(13),
+                    )
+                    .child(
+                        VirtualScrollView::new({
+                            let selection = self.selection.clone();
+                            move |idx, _| {
+                                let channel = channels.read()[idx].clone();
 
-                                        *selection.write() = HomeSelection::DM(id);
-                                    });
-                                }
-                            }),
-                        ),
-                )
-                .child(
-                    rect()
-                        .child(
-                            label()
-                                .margin((28., 16., 8., 16.))
-                                .text("Direct Messages")
-                                .font_size(13),
-                        )
-                        .child(
-                            VirtualScrollView::new({
-                                let selection = self.selection.clone();
-                                move |idx, _| {
-                                    let channel = channels.read()[idx].clone();
-
-                                    rect()
-                                        .padding((0., 8.))
-                                        .key(channel.read().id())
-                                        .child(DMButton {
-                                            channel,
-                                            selection: selection.clone(),
-                                        })
-                                        .into_element()
-                                }
-                            })
-                            .item_size(42.)
-                            .length(channels.read().len()),
-                        ),
-                ),
-        )
+                                rect()
+                                    .padding((3., 8.))
+                                    .key(channel.read().id())
+                                    .child(DMButton {
+                                        channel,
+                                        selection: selection.clone(),
+                                    })
+                                    .into_element()
+                            }
+                        })
+                        .item_size(48.)
+                        .length(channels.read().len()),
+                    ),
+            )
     }
 }
 
-pub fn dmlist_nav_button(icon: Bytes, title: &'static str, theme: &Theme, selected: bool) -> StoatButton {
-    StoatButton::new()
-        .corner_radius(42.)
-        .child(
-            rect()
-                .horizontal()
-                .padding((0., 8., 0., 8.))
-                .spacing(8.)
-                .height(Size::px(42.))
-                .cross_align(Alignment::Center)
-                .font_size(15)
-                .color(theme.md.outline.as_argb_u32())
-                .maybe(selected, |btn| {
-                    btn.background(theme.md.primary_container.as_argb_u32())
-                        .color(theme.md.on_primary_container.as_argb_u32())
-                })
-                .width(Size::Fill)
-                .child(svg(icon).width(Size::px(24.)).height(Size::px(24.)))
-                .child(title)
-        )
+pub fn dmlist_nav_button(
+    icon: Bytes,
+    title: &'static str,
+    theme: &Theme,
+    selected: bool,
+) -> StoatButton {
+    StoatButton::new().corner_radius(42.).child(
+        rect()
+            .horizontal()
+            .padding((0., 8., 0., 8.))
+            .spacing(8.)
+            .height(Size::px(42.))
+            .cross_align(Alignment::Center)
+            .font_size(15)
+            .color(theme.md.outline.as_argb_u32())
+            .maybe(selected, |btn| {
+                btn.background(theme.md.primary_container.as_argb_u32())
+                    .color(theme.md.on_primary_container.as_argb_u32())
+            })
+            .width(Size::Fill)
+            .child(svg(icon).width(Size::px(24.)).height(Size::px(24.)))
+            .child(title),
+    )
 }

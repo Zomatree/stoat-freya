@@ -68,7 +68,7 @@ impl Component for App {
                     // println!("{event:?}");
 
                     match event {
-                        Event::Stoat(event) => state::update_state(event, config, station),
+                        Event::Stoat(event) => state::update_state(event, config, station).await,
                         Event::Local(event) => {
                             station.write_channel(AppChannel::State).state = match event {
                                 LocalEvent::Disconnected => ConnectionState::Disconnected,

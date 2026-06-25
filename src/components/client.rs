@@ -1,12 +1,20 @@
 use std::{collections::HashMap, time::Duration};
 
-use freya::{animation::{AnimNum, AnimatedValue, Ease, Function, OnChange, OnCreation, use_animation}, prelude::*, radio::use_radio};
+use freya::{
+    animation::{AnimNum, AnimatedValue, Ease, Function, OnChange, OnCreation, use_animation},
+    prelude::*,
+    radio::use_radio,
+};
 use stoat_models::v0;
 use tokio::time::sleep;
 
 use crate::{
     AppChannel, ConnectionState, Selection,
-    components::{ChannelSettings, Discover, FloatingManager, Home, Server, ServerList, ServerSettings, Settings, UserProfile}, map_readable,
+    components::{
+        ChannelSettings, Discover, FloatingManager, Home, ModalManager, Server, ServerList,
+        ServerSettings, Settings, UserProfile,
+    },
+    map_readable,
 };
 
 #[derive(PartialEq)]
@@ -19,11 +27,16 @@ impl Component for Client {
         let settings = radio.slice(AppChannel::SettingsPage, |state| &state.settings_page);
 
         let servers = radio.slice(AppChannel::Servers, |state| &state.servers);
-        let server_settings = radio.slice(AppChannel::ServerSettingsPage, |state| &state.server_settings_page);
+        let server_settings = radio.slice(AppChannel::ServerSettingsPage, |state| {
+            &state.server_settings_page
+        });
         let channels = radio.slice(AppChannel::Channels, |state| &state.channels);
-        let channel_settings = radio.slice(AppChannel::ChannelSettingsPage, |state| &state.channel_settings_page);
+        let channel_settings = radio.slice(AppChannel::ChannelSettingsPage, |state| {
+            &state.channel_settings_page
+        });
         let connection_state = radio.slice_mut(AppChannel::State, |state| &mut state.state);
-        let user_profile = radio.slice_mut(AppChannel::UserProfile, |state| &mut state.user_profile);
+        let user_profile =
+            radio.slice_mut(AppChannel::UserProfile, |state| &mut state.user_profile);
 
         let show_connection_state_banner = use_state(|| false);
 
@@ -109,7 +122,7 @@ impl Component for Client {
                             }
                         });
                     }
-                    ConnectionState::Connected => {},
+                    ConnectionState::Connected => {}
                 }
             }
         });
@@ -118,6 +131,8 @@ impl Component for Client {
             .child(
                 rect()
                     .direction(Direction::Horizontal)
+                    .child(FloatingManager {})
+                    .child(ModalManager {})
                     .child(ServerList {})
                     .child(match selected.read().clone() {
                         Selection::Server(server_id) => {
@@ -144,30 +159,50 @@ impl Component for Client {
                     .child(Settings {})
                     .into_element()
             }))
-            .maybe_child(server_settings.read().as_ref().map(|(id, _)| id.clone()).filter(|_| server_settings_opacity > 0.).map(|server_id| {
-                rect()
-                    .position(Position::new_global())
-                    .width(Size::window_percent(100.))
-                    .height(Size::window_percent(100.))
-                    .layer(Layer::Overlay)
-                    .opacity(server_settings_opacity)
-                    .child(ServerSettings {
-                        server: map_readable::<HashMap<String, v0::Server>, _>(servers.into_readable(), move |servers| servers.get(&server_id).unwrap())
-                    })
-                    .into_element()
-            }))
-            .maybe_child(channel_settings.read().as_ref().map(|(id, _)| id.clone()).filter(|_| channel_settings_opacity > 0.).map(|channel_id| {
-                rect()
-                    .position(Position::new_global())
-                    .width(Size::window_percent(100.))
-                    .height(Size::window_percent(100.))
-                    .layer(Layer::Overlay)
-                    .opacity(channel_settings_opacity)
-                    .child(ChannelSettings {
-                        channel: map_readable::<HashMap<String, v0::Channel>, _>(channels.into_readable(), move |channels| channels.get(&channel_id).unwrap())
-                    })
-                    .into_element()
-            }))
+            .maybe_child(
+                server_settings
+                    .read()
+                    .as_ref()
+                    .map(|(id, _)| id.clone())
+                    .filter(|_| server_settings_opacity > 0.)
+                    .map(|server_id| {
+                        rect()
+                            .position(Position::new_global())
+                            .width(Size::window_percent(100.))
+                            .height(Size::window_percent(100.))
+                            .layer(Layer::Overlay)
+                            .opacity(server_settings_opacity)
+                            .child(ServerSettings {
+                                server: map_readable::<HashMap<String, v0::Server>, _>(
+                                    servers.into_readable(),
+                                    move |servers| servers.get(&server_id).unwrap(),
+                                ),
+                            })
+                            .into_element()
+                    }),
+            )
+            .maybe_child(
+                channel_settings
+                    .read()
+                    .as_ref()
+                    .map(|(id, _)| id.clone())
+                    .filter(|_| channel_settings_opacity > 0.)
+                    .map(|channel_id| {
+                        rect()
+                            .position(Position::new_global())
+                            .width(Size::window_percent(100.))
+                            .height(Size::window_percent(100.))
+                            .layer(Layer::Overlay)
+                            .opacity(channel_settings_opacity)
+                            .child(ChannelSettings {
+                                channel: map_readable::<HashMap<String, v0::Channel>, _>(
+                                    channels.into_readable(),
+                                    move |channels| channels.get(&channel_id).unwrap(),
+                                ),
+                            })
+                            .into_element()
+                    }),
+            )
             .maybe_child(show_connection_state_banner.read().then(|| {
                 let connection_state = connection_state.read();
 
@@ -184,19 +219,28 @@ impl Component for Client {
                     .width(Size::window_percent(100.))
                     .height(Size::px(30.))
                     .center()
-                    .child(label().text(text).font_size(16.).color(color).font_weight(FontWeight::SEMI_BOLD))
+                    .child(
+                        label()
+                            .text(text)
+                            .font_size(16.)
+                            .color(color)
+                            .font_weight(FontWeight::SEMI_BOLD),
+                    )
                     .background(background)
             }))
-            .child(FloatingManager {})
             .maybe_child(user_profile.read().cloned().map(|user_id| {
-                let user = radio.slice(AppChannel::Users, move |state| state.users.get(&user_id).unwrap());
+                let user = radio.slice(AppChannel::Users, move |state| {
+                    state.users.get(&user_id).unwrap()
+                });
 
                 rect()
                     .position(Position::new_global())
                     .width(Size::window_percent(100.))
                     .height(Size::window_percent(100.))
                     .layer(Layer::Overlay)
-                    .child(UserProfile { user: user.into_readable() })
+                    .child(UserProfile {
+                        user: user.into_readable(),
+                    })
                     .into_element()
             }))
     }

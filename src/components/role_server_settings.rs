@@ -1,16 +1,18 @@
 use freya::{
     icons::lucide::{chevron_right, list, user_plus},
     prelude::*,
+    radio::use_radio,
 };
 use stoat_models::v0;
 
 use crate::{
-    components::{StoatButton, StoatButtonLayoutThemePartialExt},
+    AppChannel, ServerSettingsPage,
+    components::{ModalValue, StoatButton, StoatButtonLayoutThemePartialExt, use_modals},
     parse_fill, use_material_theme,
 };
 
-#[derive(Clone, PartialEq)]
-enum SelectedRole {
+#[derive(Debug, Clone, PartialEq)]
+pub enum SelectedRole {
     Default,
     Role(String),
 }
@@ -18,12 +20,22 @@ enum SelectedRole {
 #[derive(PartialEq)]
 pub struct RoleServerSettings {
     pub server: Readable<v0::Server>,
+    pub selected_role: Option<SelectedRole>,
 }
 
 impl Component for RoleServerSettings {
     fn render(&self) -> impl IntoElement {
         let theme = use_material_theme();
-        let mut selected_role = use_state(|| None);
+        let mut modals = use_modals();
+        let mut radio = use_radio(AppChannel::ServerSettingsPage);
+
+        let set_selected_role = {
+            let server = self.server.read().id.clone();
+            move |role| {
+                radio.write().server_settings_page =
+                    Some((server.clone(), ServerSettingsPage::Roles(Some(role))))
+            }
+        };
 
         let ordered_roles = use_memo({
             let server = self.server.clone();
@@ -44,7 +56,7 @@ impl Component for RoleServerSettings {
             }
         });
 
-        match selected_role.read().cloned() {
+        match self.selected_role.clone() {
             Some(SelectedRole::Default) => "defaut".into_element(),
             Some(SelectedRole::Role(id)) => id.into_element(),
             None => rect()
@@ -55,7 +67,10 @@ impl Component for RoleServerSettings {
                         .child(
                             StoatButton::new()
                                 .corner_radius(12.)
-                                .on_press(move |_| selected_role.set(Some(SelectedRole::Default)))
+                                .on_press({
+                                    let mut set_selected_role = set_selected_role.clone();
+                                    move |_| set_selected_role(SelectedRole::Default)
+                                })
                                 .child(
                                     rect()
                                         .padding(13.)
@@ -111,55 +126,67 @@ impl Component for RoleServerSettings {
                                 ),
                         )
                         .child(
-                            StoatButton::new().corner_radius(12.).child(
-                                rect()
-                                    .padding(13.)
-                                    .background(theme.md.secondary_container.as_argb_u32())
-                                    .color(theme.md.on_secondary_container.as_argb_u32())
-                                    .child(
-                                        rect()
-                                            .horizontal()
-                                            .spacing(16.)
-                                            .cross_align(Alignment::Center)
-                                            .content(Content::Flex)
-                                            .child(
-                                                rect()
-                                                    .corner_radius(36.)
-                                                    .width(Size::px(36.))
-                                                    .height(Size::px(36.))
-                                                    .background(theme.md.surface_dim.as_argb_u32())
-                                                    .color(theme.md.on_surface.as_argb_u32())
-                                                    .center()
-                                                    .child(
-                                                        svg(user_plus())
-                                                            .width(Size::px(22.))
-                                                            .height(Size::px(22.)),
-                                                    ),
-                                            )
-                                            .child(
-                                                rect()
-                                                    .width(Size::flex(1.))
-                                                    .child(
-                                                        label()
-                                                            .font_size(14.)
-                                                            .font_weight(FontWeight::SEMI_BOLD)
-                                                            .line_height(1.5)
-                                                            .text("Create Role"),
-                                                    )
-                                                    .child(
-                                                        label()
-                                                            .font_size(12.)
-                                                            .line_height(1.5)
-                                                            .text("Create a new role"),
-                                                    ),
-                                            )
-                                            .child(
-                                                svg(chevron_right())
-                                                    .width(Size::px(18.))
-                                                    .height(Size::px(18.)),
-                                            ),
-                                    ),
-                            ),
+                            StoatButton::new()
+                                .corner_radius(12.)
+                                .on_press({
+                                    let id = self.server.read().id.clone();
+                                    move |_| {
+                                        modals.write().push_modal(ModalValue::CreateRole {
+                                            server: id.clone(),
+                                        })
+                                    }
+                                })
+                                .child(
+                                    rect()
+                                        .padding(13.)
+                                        .background(theme.md.secondary_container.as_argb_u32())
+                                        .color(theme.md.on_secondary_container.as_argb_u32())
+                                        .child(
+                                            rect()
+                                                .horizontal()
+                                                .spacing(16.)
+                                                .cross_align(Alignment::Center)
+                                                .content(Content::Flex)
+                                                .child(
+                                                    rect()
+                                                        .corner_radius(36.)
+                                                        .width(Size::px(36.))
+                                                        .height(Size::px(36.))
+                                                        .background(
+                                                            theme.md.surface_dim.as_argb_u32(),
+                                                        )
+                                                        .color(theme.md.on_surface.as_argb_u32())
+                                                        .center()
+                                                        .child(
+                                                            svg(user_plus())
+                                                                .width(Size::px(22.))
+                                                                .height(Size::px(22.)),
+                                                        ),
+                                                )
+                                                .child(
+                                                    rect()
+                                                        .width(Size::flex(1.))
+                                                        .child(
+                                                            label()
+                                                                .font_size(14.)
+                                                                .font_weight(FontWeight::SEMI_BOLD)
+                                                                .line_height(1.5)
+                                                                .text("Create Role"),
+                                                        )
+                                                        .child(
+                                                            label()
+                                                                .font_size(12.)
+                                                                .line_height(1.5)
+                                                                .text("Create a new role"),
+                                                        ),
+                                                )
+                                                .child(
+                                                    svg(chevron_right())
+                                                        .width(Size::px(18.))
+                                                        .height(Size::px(18.)),
+                                                ),
+                                        ),
+                                ),
                         ),
                 )
                 .child(
@@ -179,9 +206,9 @@ impl Component for RoleServerSettings {
                                     .corner_radius(12.)
                                     .on_press({
                                         let id = role.id.clone();
-                                        move |_| {
-                                            selected_role.set(Some(SelectedRole::Role(id.clone())))
-                                        }
+                                        let mut set_selected_role = set_selected_role.clone();
+
+                                        move |_| set_selected_role(SelectedRole::Role(id.clone()))
                                     })
                                     .child(
                                         rect()

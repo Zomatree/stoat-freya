@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use freya::{
-    icons::lucide::{compass, settings},
+    icons::lucide::{compass, plus, settings},
     prelude::*,
     radio::use_radio,
 };
@@ -10,8 +10,7 @@ use stoat_models::v0;
 use crate::{
     AppChannel, Selection, SettingsPage,
     components::{
-        CurrentUserButton, HomeButton, ServerListButton, StoatButton,
-        StoatButtonLayoutThemePartialExt, StoatTooltip,
+        CurrentUserButton, HomeButton, ModalValue, ServerListButton, StoatButton, StoatButtonLayoutThemePartialExt, StoatTooltip, use_modals
     },
     map_readable, use_material_theme,
 };
@@ -23,6 +22,7 @@ impl Component for ServerList {
     fn render(&self) -> impl IntoElement {
         let mut radio = use_radio(AppChannel::Servers);
         let theme = use_material_theme();
+        let mut modals = use_modals();
 
         let order_settings = radio.slice(AppChannel::Settings("ordering"), |state| {
             &state.settings.ordering
@@ -123,6 +123,42 @@ impl Component for ServerList {
                             )
                             .child(
                                 StoatTooltip::new(
+                                    label().max_lines(1).font_size(11.).text("Create or join a server"),
+                                )
+                                .position(AttachedPosition::Right)
+                                .child(
+                                    rect()
+                                        .width(Size::px(56.))
+                                        .height(Size::px(56.))
+                                        .center()
+                                        .child(
+                                            StoatButton::new()
+                                                .corner_radius(42.)
+                                                .child(
+                                                    rect()
+                                                        .center()
+                                                        .width(Size::px(42.0))
+                                                        .height(Size::px(42.0))
+                                                        .background(
+                                                            theme
+                                                                .md
+                                                                .surface_container_low
+                                                                .as_argb_u32(),
+                                                        )
+                                                        .child(
+                                                            svg(plus())
+                                                                .width(Size::px(32.0))
+                                                                .height(Size::px(32.0)),
+                                                        ),
+                                                )
+                                                .on_press(move |_| {
+                                                    modals.write().push_modal(ModalValue::CreateJoinServer);
+                                                }),
+                                        ),
+                                ),
+                            )
+                            .child(
+                                StoatTooltip::new(
                                     label().max_lines(1).font_size(11.).text("Find new servers to join"),
                                 )
                                 .position(AttachedPosition::Right)
@@ -158,7 +194,7 @@ impl Component for ServerList {
                                                 }),
                                         ),
                                 ),
-                            ),
+                            )
                     )
                     .show_scrollbar(false)
                     .width(Size::px(56.))

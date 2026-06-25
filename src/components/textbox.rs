@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use freya::{
-    icons::lucide::{plus, send_horizontal, smile},
+    icons::lucide::{plus, smile},
     prelude::*,
     radio::use_radio,
     text_edit::*,
@@ -12,7 +12,7 @@ use crate::{
     AppChannel, LocalFile,
     components::{
         AttachmentController, EmojiPicker, ReplyController, StoatButton,
-        StoatButtonColorsThemePartialExt, StoatButtonLayoutThemePartialExt, use_floating,
+        StoatButtonLayoutThemePartialExt, use_floating,
     },
     http, use_material_theme,
 };

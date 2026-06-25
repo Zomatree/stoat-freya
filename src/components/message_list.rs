@@ -10,7 +10,7 @@ pub struct MessageList {
     pub at_start: Readable<bool>,
     pub at_end: Readable<bool>,
     pub permit_fetching: Readable<bool>,
-    pub controller: ScrollController
+    pub controller: ScrollController,
 }
 
 impl MessageList {
@@ -20,7 +20,7 @@ impl MessageList {
         at_start: Readable<bool>,
         at_end: Readable<bool>,
         permit_fetching: Readable<bool>,
-        controller: ScrollController
+        controller: ScrollController,
     ) -> Self {
         Self {
             children: Vec::new(),
@@ -29,7 +29,7 @@ impl MessageList {
             at_start,
             at_end,
             permit_fetching,
-            controller
+            controller,
         }
     }
 }
@@ -53,7 +53,8 @@ impl Component for MessageList {
             .on_sized(move |e: Event<SizedEventData>| list_viewport.set_if_modified(e.area))
             .child(
                 ScrollView::new_controlled(self.controller)
-                    // .show_scrollbar(false)
+                    .max_height(Size::Fill)
+                    .height(Size::Inner)
                     .maybe_child(self.at_start.read().not().then(|| {
                         rect()
                             .key("top")

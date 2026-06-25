@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use freya::{
-    icons::lucide::{square_arrow_right, x},
+    icons::lucide::{chevron_right, square_arrow_right, x},
     prelude::*,
     radio::use_radio,
 };
@@ -9,7 +9,10 @@ use stoat_models::v0;
 
 use crate::{
     AppChannel, ServerSettingsPage,
-    components::{EmojiServerSettings, OverviewServerSettings, RoleServerSettings, StoatButton, StoatButtonColorsThemePartialExt, StoatButtonLayoutThemePartialExt},
+    components::{
+        EmojiServerSettings, OverviewServerSettings, RoleServerSettings, SelectedRole, StoatButton,
+        StoatButtonColorsThemePartialExt, StoatButtonLayoutThemePartialExt,
+    },
     theme::Theme,
     use_material_theme,
 };
@@ -93,7 +96,7 @@ impl Component for ServerSettings {
                                         "USER MANAGEMENT",
                                         &theme,
                                         &[
-                                            ServerSettingsPage::Roles,
+                                            ServerSettingsPage::Roles(None),
                                             ServerSettingsPage::Invites,
                                             ServerSettingsPage::Bans,
                                         ],
@@ -118,25 +121,90 @@ impl Component for ServerSettings {
                                     .width(Size::flex(1.))
                                     .max_width(Size::px(740.))
                                     .child(rect().padding((32., 32.)).child({
-                                        let page = current_page.read().as_ref().unwrap().1;
+                                        let page = current_page.read().as_ref().unwrap().1.clone();
+                                        let selected_role =
+                                            if let ServerSettingsPage::Roles(Some(role)) = &page {
+                                                Some(role.clone())
+                                            } else {
+                                                None
+                                            };
+
                                         rect()
                                             .spacing(8.)
                                             .child(
-                                                label()
-                                                    .text(page.title())
+                                                rect()
+                                                    .cross_align(Alignment::Center)
+                                                    .spacing(8.)
                                                     .font_size(22)
-                                                    .line_height(1.75)
-                                                    .font_weight(550),
+                                                    .font_weight(550)
+                                                    .horizontal()
+                                                    .child(
+                                                        label()
+                                                            .text(page.title())
+                                                            .maybe(selected_role.is_some(), |label| label.color(theme.md.outline.as_argb_u32())            .on_pointer_enter(move |_| {
+                Cursor::set(CursorIcon::Pointer);
+            })
+            .on_pointer_leave(move |_| {
+                Cursor::set(CursorIcon::default());
+            })
+            .on_press({
+                                                                let mut current_page =
+                                                                    current_page.clone();
+                                                                move |_| {
+                                                                    if let Some(v) = current_page
+                                                                        .write()
+                                                                        .as_mut()
+                                                                    {
+                                                                        v.1 = ServerSettingsPage::Roles(None);
+                                                                    }
+                                                                }
+                                                            }))
+
+                                                    )
+                                                    .maybe_child(selected_role.is_some().then(
+                                                        || {
+                                                            svg(chevron_right())
+                                                                .width(Size::px(14.))
+                                                                .height(Size::px(14.))
+                                                                .color(theme.md.outline.as_argb_u32())
+                                                        },
+                                                    ))
+                                                    .maybe_child(selected_role.map(|role| {
+                                                                                                                label()
+                                                            .text(
+
+                                                        match role {
+                                                            SelectedRole::Default => {
+                                                                "Default Permissions".to_string()
+                                                            }
+                                                            SelectedRole::Role(id) => self
+                                                                .server
+                                                                .read()
+                                                                .roles
+                                                                .get(&id)
+                                                                .unwrap()
+                                                                .name
+                                                                .clone(),
+                                                        })
+                                                    })),
                                             )
                                             .child(match page {
                                                 ServerSettingsPage::Overview => {
-                                                    OverviewServerSettings { server: self.server.clone() }.into_element()
+                                                    OverviewServerSettings {
+                                                        server: self.server.clone(),
+                                                    }
+                                                    .into_element()
                                                 }
-                                                ServerSettingsPage::Emojis => {
-                                                    EmojiServerSettings { server: self.server.clone() }.into_element()
+                                                ServerSettingsPage::Emojis => EmojiServerSettings {
+                                                    server: self.server.clone(),
                                                 }
-                                                ServerSettingsPage::Roles => {
-                                                    RoleServerSettings { server: self.server.clone() }.into_element()
+                                                .into_element(),
+                                                ServerSettingsPage::Roles(selected_role) => {
+                                                    RoleServerSettings {
+                                                        server: self.server.clone(),
+                                                        selected_role,
+                                                    }
+                                                    .into_element()
                                                 }
                                                 ServerSettingsPage::Invites => {
                                                     "Coming soon!".into_element()
@@ -213,10 +281,10 @@ impl Component for ServerSettingsButton {
             )
             .on_press({
                 let mut current_page = current_page.clone();
-                let page = self.page;
+                let page = self.page.clone();
                 move |_| {
                     if let Some(v) = current_page.write().as_mut() {
-                        v.1 = page;
+                        v.1 = page.clone();
                     }
                 }
             })
@@ -242,7 +310,7 @@ fn settings_category(
             rect().spacing(6.).children(
                 pages
                     .into_iter()
-                    .map(|page| ServerSettingsButton { page: *page }.into_element()),
+                    .map(|page| ServerSettingsButton { page: page.clone() }.into_element()),
             ),
         )
 }

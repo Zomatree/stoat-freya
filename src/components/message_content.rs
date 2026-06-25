@@ -3,7 +3,7 @@ use stoat_models::v0;
 
 use crate::{
     AppChannel,
-    components::{MessageAttachment, MessageEdit, MessageModel, MessageReactions},
+    components::{MessageAttachment, MessageEdit, MessageEmbed, MessageModel, MessageReactions},
 };
 
 #[derive(PartialEq)]
@@ -41,9 +41,7 @@ impl Component for MessageContent {
                             .clone()
                             .filter(|c| !c.is_empty())
                             .map(|content| {
-                                SelectableText::new(content)
-                                .line_height(1.5)
-                                    .into_element()
+                                SelectableText::new(content).line_height(1.5).into_element()
                                 // MarkdownViewer::new(content)
                                 //     .paragraph_size(14.)
                                 //     .into_element()
@@ -59,6 +57,23 @@ impl Component for MessageContent {
                     )
                 })
             }))
+            .children(
+                self.message
+                    .message
+                    .embeds
+                    .iter()
+                    .flatten()
+                    .filter(|embed| !matches!(embed, v0::Embed::None))
+                    .cloned()
+                    .map(|embed| {
+                        MessageEmbed {
+                            message: self.message.clone(),
+                            channel: self.channel.clone(),
+                            embed,
+                        }
+                        .into_element()
+                    }),
+            )
             .maybe_child(
                 (!self.message.message.reactions.is_empty()).then(|| MessageReactions {
                     message: self.message.clone(),

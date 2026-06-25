@@ -12,15 +12,7 @@ use reqwest::{
 use scc::HashMap;
 use serde::{Deserialize, Serialize};
 use stoat_models::v0::{
-    AllMemberResponse, BanListResult, BulkMessageResponse, Channel, ChannelUnread,
-    CreateVoiceUserResponse, CreateWebhookBody, DataBanCreate, DataCreateEmoji, DataCreateRole,
-    DataCreateServerChannel, DataDefaultChannelPermissions, DataEditChannel, DataEditMessage,
-    DataEditRole, DataEditRoleRanks, DataEditServer, DataEditUser, DataEditWebhook, DataJoinCall,
-    DataMemberEdit, DataMessageSend, DataSendFriendRequest, DataSetRolePermissions,
-    DataSetServerRolePermission, Emoji, FetchServerResponse, FlagResponse, Invite, Member, Message,
-    MutualResponse, NewRoleResponse, OptionsBulkDelete, OptionsFetchAllMembers, OptionsFetchServer,
-    OptionsFetchSettings, OptionsQueryMessages, OptionsServerDelete, OptionsUnreact,
-    ResponseWebhook, Role, Server, ServerBan, User, UserProfile, UserSettings, Webhook,
+    AllMemberResponse, BanListResult, BulkMessageResponse, Channel, ChannelUnread, CreateServerLegacyResponse, CreateVoiceUserResponse, CreateWebhookBody, DataBanCreate, DataCreateEmoji, DataCreateRole, DataCreateServer, DataCreateServerChannel, DataDefaultChannelPermissions, DataEditChannel, DataEditMessage, DataEditRole, DataEditRoleRanks, DataEditServer, DataEditUser, DataEditWebhook, DataJoinCall, DataMemberEdit, DataMessageSend, DataSendFriendRequest, DataSetRolePermissions, DataSetServerRolePermission, Emoji, FetchServerResponse, FlagResponse, Invite, InviteJoinResponse, Member, Message, MutualResponse, NewRoleResponse, OptionsBulkDelete, OptionsFetchAllMembers, OptionsFetchServer, OptionsFetchSettings, OptionsQueryMessages, OptionsServerDelete, OptionsUnreact, ResponseWebhook, Role, Server, ServerBan, User, UserProfile, UserSettings, Webhook
 };
 use stoat_permissions::DataPermissionsValue;
 use tokio::time::sleep;
@@ -432,6 +424,12 @@ impl HttpClient {
             .await
     }
 
+    pub async fn join_invite(&self, invite_id: &str) -> Result<InviteJoinResponse> {
+        self.request(Method::POST, format!("/invites/{invite_id}"))
+            .response()
+            .await
+    }
+
     pub async fn ban_member(
         &self,
         server_id: &str,
@@ -773,6 +771,13 @@ impl HttpClient {
     pub async fn delete_emoji(&self, emoji_id: &str) -> Result<()> {
         self.request(Method::DELETE, format!("/custom/emoji/{emoji_id}"))
             .send()
+            .await
+    }
+
+    pub async fn create_server(&self, data: &DataCreateServer) -> Result<CreateServerLegacyResponse> {
+        self.request(Method::POST, format!("/servers/create"))
+            .body(data)
+            .response()
             .await
     }
 }

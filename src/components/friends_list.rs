@@ -43,37 +43,43 @@ impl Component for FriendsList {
                             })
                             .into_readable()
                     })
-                    .filter(|user| match page {
-                        FriendPage::Online => user.read().online,
-                        FriendPage::All => true,
-                        FriendPage::Pending => [
-                            v0::RelationshipStatus::Incoming,
-                            v0::RelationshipStatus::Outgoing,
-                        ]
-                        .contains(&user.read().relationship),
-                        FriendPage::Blocked => [
-                            v0::RelationshipStatus::Blocked,
-                            v0::RelationshipStatus::BlockedOther,
-                        ]
-                        .contains(&user.read().relationship),
+                    .filter(|user| {
+                        let user = user.read();
+
+                        match page {
+                            FriendPage::Online => {
+                                user.online && user.relationship == v0::RelationshipStatus::Friend
+                            }
+                            FriendPage::All => user.relationship == v0::RelationshipStatus::Friend,
+                            FriendPage::Pending => [
+                                v0::RelationshipStatus::Incoming,
+                                v0::RelationshipStatus::Outgoing,
+                            ]
+                            .contains(&user.relationship),
+                            FriendPage::Blocked => [
+                                v0::RelationshipStatus::Blocked,
+                                v0::RelationshipStatus::BlockedOther,
+                            ]
+                            .contains(&user.relationship),
+                        }
                     })
                     .collect::<Vec<_>>()
             }
         });
 
         // rect().padding((0., 16.)).child(
-            VirtualScrollView::new(move |idx, _| {
-                let user = relations.read()[idx].clone();
+        VirtualScrollView::new(move |idx, _| {
+            let user = relations.read()[idx].clone();
 
-                rect()
-                    .key(user.peek().id.clone())
-                    .padding((0., 16., 2., 16.))
-                    // .margin((0., 16.))
-                    .child(FriendButton { user })
-                    .into_element()
-            })
-            .item_size(54.)
-            .length(relations.read().len())
+            rect()
+                .key(user.peek().id.clone())
+                .padding((0., 16., 2., 16.))
+                // .margin((0., 16.))
+                .child(FriendButton { user })
+                .into_element()
+        })
+        .item_size(54.)
+        .length(relations.read().len())
         // )
     }
 }

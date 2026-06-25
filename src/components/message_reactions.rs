@@ -1,5 +1,4 @@
 use freya::{prelude::*, radio::use_radio};
-use freya_components::gif_viewer::GifViewer;
 use stoat_models::v0;
 
 use crate::{

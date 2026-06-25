@@ -10,7 +10,7 @@ pub fn map_readable<T, U>(readable: Readable<T>, f: impl Fn(&T) -> &U + 'static)
     let f = Rc::new(f);
 
     Readable::new(
-        Box::new({
+        {
             let readable = readable.clone();
             let f = f.clone();
 
@@ -23,8 +23,8 @@ pub fn map_readable<T, U>(readable: Readable<T>, f: impl Fn(&T) -> &U + 'static)
 
                 ReadableRef::Ref(r.map(move |r| Ref::map(r, |v| f(v))))
             }
-        }),
-        Box::new({
+        },
+        {
             let readable = readable.clone();
             let f = f.clone();
 
@@ -37,13 +37,23 @@ pub fn map_readable<T, U>(readable: Readable<T>, f: impl Fn(&T) -> &U + 'static)
 
                 ReadableRef::Ref(r.map(move |r| Ref::map(r, |v| f(v))))
             }
-        }),
+        },
+        |_| true,
     )
 }
 
 pub struct OptionalReadable<T: 'static> {
     pub(crate) read_fn: Rc<dyn Fn() -> Option<ReadableRef<T>>>,
     pub(crate) peek_fn: Rc<dyn Fn() -> Option<ReadableRef<T>>>,
+}
+
+impl<T: 'static> Clone for OptionalReadable<T> {
+    fn clone(&self) -> Self {
+        Self {
+            read_fn: self.read_fn.clone(),
+            peek_fn: self.peek_fn.clone(),
+        }
+    }
 }
 
 impl<T: 'static> OptionalReadable<T> {

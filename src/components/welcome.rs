@@ -1,14 +1,15 @@
 use freya::{
-    icons::lucide::{
-        banknote, circle_plus, compass, house, message_square_text, settings, users,
-    },
+    icons::lucide::{banknote, circle_plus, compass, house, message_square_text, settings, users},
     prelude::*,
     radio::use_radio,
 };
 
 use crate::{
     AppChannel, Selection, SettingsPage,
-    components::{HideSidebarHeader, StoatButton, StoatButtonColorsThemePartialExt, StoatButtonLayoutThemePartialExt},
+    components::{
+        HideSidebarHeader, StoatButton, StoatButtonColorsThemePartialExt,
+        StoatButtonLayoutThemePartialExt,
+    },
     use_material_theme,
 };
 
@@ -184,7 +185,7 @@ impl Component for WelcomeButton {
                             .spacing(2.)
                             .child(label().text(self.title).font_size(14))
                             .child(label().text(self.contents).font_size(12)),
-                    )
+                    ),
             )
             .on_press(self.on_press.clone())
     }

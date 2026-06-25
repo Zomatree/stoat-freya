@@ -138,6 +138,7 @@ impl Component for SingleLineEntry {
                             .position(
                                 Position::new_absolute().top(title_top)
                             )
+                            .transform_origin(TransformOrigin::top_left())
                             .scale(title_scale)
                             .layer(1),
                     ),

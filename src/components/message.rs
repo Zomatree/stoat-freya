@@ -5,7 +5,7 @@ use stoat_models::v0;
 use crate::{
     AppChannel,
     components::{Avatar, MessageContent, MessageModel, MessageReply, UserCard, use_floating},
-    member_display_color,
+    member_display_color, use_material_theme,
 };
 
 #[derive(PartialEq)]
@@ -17,6 +17,7 @@ pub struct Message {
 impl Component for Message {
     fn render(&self) -> impl IntoElement {
         let radio = use_radio(AppChannel::Servers);
+        let theme = use_material_theme();
 
         let server = use_memo({
             let member = self.message.member.clone();
@@ -144,10 +145,10 @@ impl Component for Message {
                                     .child(
                                         label()
                                             .text(display_name.read().clone())
-                                            // .map(role_color.read().clone(), |mut this, color| {
-                                            //     this.get_text_style_data().color = Some(color);
-                                            //     this
-                                            // })
+                                            .map(role_color.read().clone(), |mut this, color| {
+                                                this.get_text_style_data().color = Some(color);
+                                                this
+                                            })
                                             .line_height(1.5)
                                             .on_pointer_enter(move |_| {
                                                 Cursor::set(CursorIcon::Pointer);
@@ -199,11 +200,11 @@ impl Component for Message {
                                                     )
                                                 }
                                             })
-                                            .color(0xff90909a)
+                                            .color(theme.md.outline.as_argb_u32())
                                             .font_size(12),
                                     )
                                     .maybe_child(self.message.message.edited.as_ref().map(|_ts| {
-                                        label().text("(edited)").font_size(12).color(0xff90909a)
+                                        label().text("(edited)").font_size(12).color(theme.md.outline.as_argb_u32())
                                     })),
                             )
                             .child(MessageContent {

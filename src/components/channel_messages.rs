@@ -1,4 +1,5 @@
 use std::{
+    borrow::Cow,
     collections::{HashMap, VecDeque},
     fmt::Debug,
     rc::Rc,
@@ -1000,7 +1001,35 @@ impl Component for ChannelMessages {
                 Deferred::new().child(
                     rect()
                         .padding((16., 0., 26., 0.))
-                        .maybe_child(at_start.read().then(|| rect().child("Start of channel.")))
+                        .maybe_child(at_start.read().then(|| {
+                            rect()
+                                .margin((18., 16., 10., 16.))
+                                .child(label().font_size(32.).line_height(1.5).text(match &*self.channel.read() {
+                                    v0::Channel::DirectMessage { recipients, .. } => {
+                                        let user_id = radio.peek_state().user_id.clone().unwrap();
+
+                                        let other = recipients
+                                            .iter()
+                                            .find(|&id| id != &*user_id)
+                                            .unwrap()
+                                            .clone();
+
+                                        let user = radio.slice(AppChannel::Users, move |state| {
+                                            state.users.get(&other).unwrap()
+                                        });
+
+                                        Cow::Owned(user.read().username.clone())
+                                    }
+                                    v0::Channel::Group { name, .. }
+                                    | v0::Channel::TextChannel { name, .. } => {
+                                        Cow::Owned(name.clone())
+                                    }
+                                    v0::Channel::SavedMessages { .. } => {
+                                        Cow::Borrowed("Saved Messages")
+                                    }
+                                }))
+                                .child(label().font_size(16.).font_weight(550).line_height(1.5).text("This is the start of your conversation."))
+                        }))
                         .child(rect().children(message_views.read().iter().cloned())),
                 ),
             ),

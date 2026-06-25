@@ -412,10 +412,10 @@ impl Component for MemberListMember {
                                     .child(
                                         label()
                                             .text(display_name.read().clone())
-                                            // .map(role_color.read().clone(), |mut this, color| {
-                                            //     this.get_text_style_data().color = Some(color);
-                                            //     this
-                                            // })
+                                            .map(role_color.read().clone(), |mut this, color| {
+                                                this.get_text_style_data().color = Some(color);
+                                                this
+                                            })
                                             .font_size(14)
                                             .max_lines(1)
                                             .text_overflow(TextOverflow::Ellipsis),

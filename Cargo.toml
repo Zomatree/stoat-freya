@@ -1,6 +1,6 @@
 [package]
 name = "stoat-freya"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 repository = "https://github.com/Zomatree/stoat-freya"
 
@@ -14,8 +14,8 @@ hotreload = ["freya/hotreload"]
 # freya-components = { git = "https://github.com/marc2332/freya", rev = "f180384" }
 
 [dependencies]
-freya = { version = "0.4.0-rc.21", features = ["devtools", "radio", "remote-asset", "icons", "webview", "markdown", "zoom-shortcuts"] }
-freya-components = { version = "0.4.0-rc.21", features = ["remote-asset", "gif"] }
+freya = { version = "0.4.0-rc.23", features = ["devtools", "radio", "remote-asset", "icons", "webview", "markdown", "zoom-shortcuts"] }
+freya-components = { version = "0.4.0-rc.23", features = ["remote-asset", "gif"] }
 tokio-tungstenite = { version = "0.27", features = ["native-tls"] }
 tungstenite = { version = "0.27", features = ["native-tls"] }
 reqwest = { version = "0.12", features = ["json", "multipart", "stream"] }
@@ -42,6 +42,7 @@ chumsky = { version = "*", features = [] }
 itertools = { version = "*" }
 material-colors = { git = "https://github.com/Aiving/material-colors", rev = "3fe7f52" }
 open = "*"
+livekit = { version = "*", features = ["native-tls"] }
 
 stoat-models = { package = "revolt-models", version = "0.13.6", default-features = false, features = ["serde", "partials"] }
 stoat-permissions = { package = "revolt-permissions", version = "0.13.6" }

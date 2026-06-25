@@ -461,7 +461,6 @@ impl Component for SystemMessagesChannelSelector {
 
         Select::new()
             .width(Size::Fill)
-            // .margin((2., 2., 2., 16.))
             .background_button(theme.md.surface_container_highest.as_argb_u32())
             .hover_background(theme.md.surface_container_highest.as_argb_u32())
             .select_background(theme.md.surface_container.as_argb_u32())
