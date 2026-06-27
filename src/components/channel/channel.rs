@@ -17,7 +17,7 @@ use crate::{
         MessageReplyPreview, ModalValue, StoatButton,
         StoatButtonLayoutThemePartialExt, StoatTooltip, Textbox, use_modals,
     },
-    http, map_readable, use_config, use_material_theme,
+    http_manager, map_readable, use_config, use_material_theme,
 };
 
 #[derive(Clone, Debug, PartialEq)]

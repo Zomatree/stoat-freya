@@ -3,11 +3,11 @@ use freya::prelude::*;
 use crate::{BASE, HTTP, HttpClient, use_config, use_material_theme};
 
 #[derive(PartialEq)]
-pub struct HttpProvider {
+pub struct HttpManager {
     children: Vec<Element>,
 }
 
-impl HttpProvider {
+impl HttpManager {
     pub fn new() -> Self {
         Self {
             children: Vec::new(),
@@ -15,13 +15,13 @@ impl HttpProvider {
     }
 }
 
-impl ChildrenExt for HttpProvider {
+impl ChildrenExt for HttpManager {
     fn get_children(&mut self) -> &mut Vec<Element> {
         &mut self.children
     }
 }
 
-impl Component for HttpProvider {
+impl Component for HttpManager {
     fn render(&self) -> impl IntoElement {
         let config = use_config();
         let theme = use_material_theme();

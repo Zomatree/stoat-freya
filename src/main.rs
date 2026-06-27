@@ -1,32 +1,21 @@
 use freya::{prelude::*, webview::WebViewPlugin};
 use tokio::runtime::Builder;
 
-pub mod color;
 pub mod components;
 pub mod config;
 pub mod error;
-pub mod http;
-pub mod material;
 pub mod state;
-pub mod types;
 pub mod utils;
-pub mod websocket;
 pub mod theme;
-pub mod permissions;
+pub mod stoat;
 
-pub use color::*;
+pub use components::*;
 pub use config::*;
 pub use error::*;
-pub use http::*;
-pub use material::*;
 pub use state::*;
 pub use utils::*;
 pub use theme::*;
-pub use permissions::*;
-
-use crate::components::{
-    HttpProvider, MaterialThemeProvider, Root, StoatButtonColorsThemePreference, StoatButtonLayoutThemePreference
-};
+pub use stoat::*;
 
 pub const BASE: &str = "https://api.stoat.chat";
 
@@ -75,7 +64,7 @@ fn app() -> impl IntoElement {
 
     MaterialThemeProvider::new()
         .child(ContextMenuViewer::new())
-        .child(HttpProvider::new().child(Root {}))
+        .child(HttpManager::new().child(Root {}))
 }
 
 fn main() {
