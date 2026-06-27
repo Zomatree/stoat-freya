@@ -32,32 +32,36 @@ impl Component for DMButton {
                         &e,
                         match &*channel.read() {
                             v0::Channel::DirectMessage { recipients, .. } => Menu::new().child(
-                                MenuButton::new().child(label().font_size(14.).text("Copy User ID")).on_press({
-                                    let other = recipients
-                                        .iter()
-                                        .find(|&id| id != &user_id)
-                                        .unwrap()
-                                        .clone();
+                                MenuButton::new()
+                                    .child(label().font_size(14.).text("Copy User ID"))
+                                    .on_press({
+                                        let other = recipients
+                                            .iter()
+                                            .find(|&id| id != &user_id)
+                                            .unwrap()
+                                            .clone();
 
-                                    let user = radio.slice(AppChannel::Users, move |state| {
-                                        state.users.get(&other).unwrap()
-                                    });
+                                        let user = radio.slice(AppChannel::Users, move |state| {
+                                            state.users.get(&other).unwrap()
+                                        });
 
-                                    move |_| {
-                                        Clipboard::set(user.read().id.clone()).unwrap();
-                                    }
-                                }),
+                                        move |_| {
+                                            Clipboard::set(user.read().id.clone()).unwrap();
+                                        }
+                                    }),
                             ),
                             v0::Channel::Group { id, .. } => Menu::new().child(
-                                MenuButton::new().child(label().font_size(14.).text("Copy Channel ID")).on_press({
-                                    let id = id.clone();
+                                MenuButton::new()
+                                    .child(label().font_size(14.).text("Copy Channel ID"))
+                                    .on_press({
+                                        let id = id.clone();
 
-                                    move |_| {
-                                        Clipboard::set(id.clone()).unwrap();
-                                    }
-                                }),
+                                        move |_| {
+                                            Clipboard::set(id.clone()).unwrap();
+                                        }
+                                    }),
                             ),
-                            _ => unreachable!()
+                            _ => unreachable!(),
                         },
                     );
                 }

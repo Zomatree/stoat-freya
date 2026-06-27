@@ -84,7 +84,10 @@ impl Component for AccountSettings {
                         rect().horizontal().child(
                             rect().margin((0., 0., 0., 73.)).child(
                                 StoatTooltip::new(
-                                    label().max_lines(1).font_size(11.).text("Account created some time long ago."),
+                                    label()
+                                        .max_lines(1)
+                                        .font_size(11.)
+                                        .text("Account created some time long ago."),
                                 )
                                 .position(AttachedPosition::Top)
                                 .child(

@@ -13,14 +13,14 @@ use crate::default_theme_source;
 pub enum ThemeScheme {
     #[default]
     Light,
-    Dark
+    Dark,
 }
 
 impl ThemeScheme {
     pub fn toggle(&mut self) {
         match self {
             ThemeScheme::Light => *self = ThemeScheme::Dark,
-            ThemeScheme::Dark => *self = ThemeScheme::Light
+            ThemeScheme::Dark => *self = ThemeScheme::Light,
         }
     }
 }
@@ -35,7 +35,7 @@ impl Default for ThemeConfig {
     fn default() -> Self {
         Self {
             scheme: Default::default(),
-            theme_source: default_theme_source()
+            theme_source: default_theme_source(),
         }
     }
 }
@@ -53,7 +53,7 @@ pub struct Config {
     #[serde(default)]
     pub hide_members_list: bool,
     #[serde(default)]
-    pub theme: ThemeConfig
+    pub theme: ThemeConfig,
 }
 
 pub fn get_config_path() -> PathBuf {

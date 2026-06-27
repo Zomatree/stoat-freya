@@ -13,7 +13,8 @@ use stoat_permissions::{ChannelPermission, PermissionValue};
 use crate::{
     AppChannel, PermissionQuery, calculate_channel_permissions,
     components::{
-        EmojiPicker, MessageModel, ModalValue, ReplyController, StoatButton, StoatButtonColorsThemePartialExt, use_floating, use_modals
+        EmojiPicker, MessageModel, ModalValue, ReplyController, StoatButton,
+        StoatButtonColorsThemePartialExt, use_floating, use_modals,
     },
     http,
     theme::Theme,
@@ -275,9 +276,17 @@ impl Component for MessageActions {
                                     let message = message.clone();
 
                                     if shift() {
-                                        spawn(async move { http().delete_message(&channel, &message).await.unwrap(); });
+                                        spawn(async move {
+                                            http()
+                                                .delete_message(&channel, &message)
+                                                .await
+                                                .unwrap();
+                                        });
                                     } else {
-                                    modals.write().push_modal(ModalValue::DeleteMessage { channel, message });
+                                        modals.write().push_modal(ModalValue::DeleteMessage {
+                                            channel,
+                                            message,
+                                        });
                                     }
                                 }
                             })

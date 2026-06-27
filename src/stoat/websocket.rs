@@ -11,7 +11,11 @@ use tokio::{
 use tokio_tungstenite::connect_async_with_config;
 use tungstenite::{Message, protocol::WebSocketConfig};
 
-use crate::{error::Error, http, types::{EventV1, Ping, ClientMessage}};
+use crate::{
+    error::Error,
+    http,
+    types::{ClientMessage, EventV1, Ping},
+};
 
 #[derive(Debug, Clone)]
 pub enum LocalEvent {

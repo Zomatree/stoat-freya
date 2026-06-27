@@ -6,9 +6,7 @@ use stoat_models::v0;
 
 use crate::{
     AppChannel,
-    components::{
-        Avatar, StoatButton, StoatButtonLayoutThemePartialExt, StoatTooltip,
-    },
+    components::{Avatar, StoatButton, StoatButtonLayoutThemePartialExt, StoatTooltip},
     http,
     theme::Theme,
     use_material_theme,
@@ -34,17 +32,21 @@ impl Component for CurrentUserButton {
         rect()
             .horizontal()
             .child(
-                StoatTooltip::new(rect().spacing(8.)
+                StoatTooltip::new(
+                    rect()
+                        .spacing(8.)
                         .font_size(11.)
                         .child(label().max_lines(1).text(user.username.clone()))
-                        .child(match user.status.as_ref().and_then(|s| s.presence.as_ref()) {
-                            Some(v0::Presence::Online) => "Online",
-                            Some(v0::Presence::Idle) => "Idle",
-                            Some(v0::Presence::Focus) => "Focus",
-                            Some(v0::Presence::Busy) => "Busy",
-                            Some(v0::Presence::Invisible) => "Invisible",
-                            None => "Offline",
-                        })
+                        .child(
+                            match user.status.as_ref().and_then(|s| s.presence.as_ref()) {
+                                Some(v0::Presence::Online) => "Online",
+                                Some(v0::Presence::Idle) => "Idle",
+                                Some(v0::Presence::Focus) => "Focus",
+                                Some(v0::Presence::Busy) => "Busy",
+                                Some(v0::Presence::Invisible) => "Invisible",
+                                None => "Offline",
+                            },
+                        ),
                 )
                 .position(AttachedPosition::Right)
                 .child(

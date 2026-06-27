@@ -27,7 +27,8 @@ impl Component for ServerInfoModal {
                     .text(description)
             })))
             .action("Settings", move || {
-                *server_settings.clone().write() = Some((server.id.clone(), ServerSettingsPage::default()));
+                *server_settings.clone().write() =
+                    Some((server.id.clone(), ServerSettingsPage::default()));
                 true
             })
             .default_action("Close")

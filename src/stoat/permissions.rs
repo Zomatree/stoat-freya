@@ -1,7 +1,9 @@
 use freya::radio::Radio;
 use stoat_models::v0::{Channel, Member, Server, User};
 use stoat_permissions::{
-    ALLOW_IN_TIMEOUT, ChannelPermission, ChannelType, DEFAULT_PERMISSION_DIRECT_MESSAGE, DEFAULT_PERMISSION_SAVED_MESSAGES, DEFAULT_PERMISSION_VIEW_ONLY, Override, PermissionValue, RelationshipStatus, UserPermission
+    ALLOW_IN_TIMEOUT, ChannelPermission, ChannelType, DEFAULT_PERMISSION_DIRECT_MESSAGE,
+    DEFAULT_PERMISSION_SAVED_MESSAGES, DEFAULT_PERMISSION_VIEW_ONLY, Override, PermissionValue,
+    RelationshipStatus, UserPermission,
 };
 
 use crate::{AppChannel, AppState, HttpClient, http};
@@ -144,11 +146,19 @@ impl PermissionQuery {
     /// Is our perspective user a member of the server?
     async fn are_we_a_member(&mut self) -> bool {
         if let Some(server) = &self.server {
-            let slice = self.state.slice(AppChannel::Members, |state| &state.members);
+            let slice = self
+                .state
+                .slice(AppChannel::Members, |state| &state.members);
 
             if self.member.is_some() {
                 true
-            } else if let Some(member) = slice.read().get(&server.id).unwrap().get(&self.perspective.id).cloned() {
+            } else if let Some(member) = slice
+                .read()
+                .get(&server.id)
+                .unwrap()
+                .get(&self.perspective.id)
+                .cloned()
+            {
                 self.member = Some(member);
 
                 true
@@ -228,9 +238,7 @@ impl PermissionQuery {
         if let Some(channel) = &self.channel {
             match channel {
                 Channel::DirectMessage { .. } => ChannelType::DirectMessage,
-                Channel::Group { .. } => {
-                    ChannelType::Group
-                }
+                Channel::Group { .. } => ChannelType::Group,
                 Channel::SavedMessages { .. } => ChannelType::SavedMessages,
                 Channel::TextChannel { .. } => ChannelType::ServerChannel,
             }
@@ -312,10 +320,8 @@ impl PermissionQuery {
 
     /// Are we a recipient of this channel?
     async fn are_we_part_of_the_channel(&mut self) -> bool {
-        if let Some(
-            Channel::DirectMessage { recipients, .. }
-            | Channel::Group { recipients, .. },
-        ) = &self.channel
+        if let Some(Channel::DirectMessage { recipients, .. } | Channel::Group { recipients, .. }) =
+            &self.channel
         {
             recipients.contains(&self.perspective.id)
         } else {
@@ -360,7 +366,9 @@ impl PermissionQuery {
                         }
                     }
 
-                    let slice = self.state.slice(AppChannel::Servers, |state| &state.servers);
+                    let slice = self
+                        .state
+                        .slice(AppChannel::Servers, |state| &state.servers);
 
                     if let Some(server) = slice.read().get(server).cloned() {
                         self.server.replace(server);
@@ -373,7 +381,12 @@ impl PermissionQuery {
 }
 
 pub fn user_permissions_query(state: Radio<AppState, AppChannel>) -> PermissionQuery {
-    let user = state.slice(AppChannel::Users, |state| state.users.get(state.user_id.as_ref().unwrap()).unwrap()).read().cloned();
+    let user = state
+        .slice(AppChannel::Users, |state| {
+            state.users.get(state.user_id.as_ref().unwrap()).unwrap()
+        })
+        .read()
+        .cloned();
 
     PermissionQuery::new(state, http(), user)
 }
@@ -392,7 +405,7 @@ pub async fn calculate_user_permissions(query: &mut PermissionQuery) -> Permissi
     match query.user_relationship().await {
         RelationshipStatus::Friend => return u64::MAX.into(),
         RelationshipStatus::Blocked | RelationshipStatus::BlockedOther => {
-            return (UserPermission::Access as u64).into()
+            return (UserPermission::Access as u64).into();
         }
         RelationshipStatus::Incoming | RelationshipStatus::Outgoing => {
             permissions = UserPermission::Access as u64;

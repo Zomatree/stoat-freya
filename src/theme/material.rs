@@ -1,5 +1,8 @@
-use freya::prelude::{consume_context, State};
-use material_colors::{color::Rgb, theme::{Theme, ThemeBuilder}};
+use freya::prelude::{State, consume_context};
+use material_colors::{
+    color::Rgb,
+    theme::{Theme, ThemeBuilder},
+};
 
 pub fn generate_theme(base_color: u32) -> Theme {
     ThemeBuilder::with_source(Rgb::from_u32(base_color)).build()

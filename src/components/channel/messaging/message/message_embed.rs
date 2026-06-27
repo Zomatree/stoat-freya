@@ -1,7 +1,10 @@
 use freya::prelude::*;
 use stoat_models::v0;
 
-use crate::{components::{MessageAttachment, MessageModel}, parse_fill, use_material_theme};
+use crate::{
+    components::{MessageAttachment, MessageModel},
+    parse_fill, use_material_theme,
+};
 
 #[derive(PartialEq)]
 pub struct MessageEmbed {
@@ -95,17 +98,23 @@ impl Component for WebsiteEmbed {
                             .horizontal()
                             .spacing(8.)
                             .cross_align(Alignment::Center)
-                            .maybe_child(self.metadata.icon_url.as_ref().and_then(|url| url.parse::<Uri>().ok()).map(|uri| {
-                                ImageViewer::new(uri)
-                                    .width(Size::px(14.))
-                                    .height(Size::px(14.))
-                                    .error_renderer(move |_| {
-                                        rect()
+                            .maybe_child(
+                                self.metadata
+                                    .icon_url
+                                    .as_ref()
+                                    .and_then(|url| url.parse::<Uri>().ok())
+                                    .map(|uri| {
+                                        ImageViewer::new(uri)
                                             .width(Size::px(14.))
                                             .height(Size::px(14.))
-                                            .into_element()
-                                    })
-                            }))
+                                            .error_renderer(move |_| {
+                                                rect()
+                                                    .width(Size::px(14.))
+                                                    .height(Size::px(14.))
+                                                    .into_element()
+                                            })
+                                    }),
+                            )
                             .maybe_child(self.metadata.site_name.clone().map(|site_name| {
                                 label()
                                     .max_lines(1)
@@ -229,6 +238,11 @@ impl Component for TextEmbed {
                     .clone()
                     .map(|description| label().font_size(12.).text(description)),
             )
-            .maybe_child(self.text.media.clone().map(|file| MessageAttachment { file }))
+            .maybe_child(
+                self.text
+                    .media
+                    .clone()
+                    .map(|file| MessageAttachment { file }),
+            )
     }
 }

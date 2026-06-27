@@ -10,7 +10,8 @@ use stoat_models::v0;
 use crate::{
     AppChannel, Selection, SettingsPage,
     components::{
-        CurrentUserButton, HomeButton, ModalValue, ServerListButton, StoatButton, StoatButtonLayoutThemePartialExt, StoatTooltip, use_modals
+        CurrentUserButton, HomeButton, ModalValue, ServerListButton, StoatButton,
+        StoatButtonLayoutThemePartialExt, StoatTooltip, use_modals,
     },
     map_readable, use_material_theme,
 };
@@ -123,7 +124,10 @@ impl Component for ServerList {
                             )
                             .child(
                                 StoatTooltip::new(
-                                    label().max_lines(1).font_size(11.).text("Create or join a server"),
+                                    label()
+                                        .max_lines(1)
+                                        .font_size(11.)
+                                        .text("Create or join a server"),
                                 )
                                 .position(AttachedPosition::Right)
                                 .child(
@@ -152,14 +156,19 @@ impl Component for ServerList {
                                                         ),
                                                 )
                                                 .on_press(move |_| {
-                                                    modals.write().push_modal(ModalValue::CreateJoinServer);
+                                                    modals
+                                                        .write()
+                                                        .push_modal(ModalValue::CreateJoinServer);
                                                 }),
                                         ),
                                 ),
                             )
                             .child(
                                 StoatTooltip::new(
-                                    label().max_lines(1).font_size(11.).text("Find new servers to join"),
+                                    label()
+                                        .max_lines(1)
+                                        .font_size(11.)
+                                        .text("Find new servers to join"),
                                 )
                                 .position(AttachedPosition::Right)
                                 .child(
@@ -194,41 +203,45 @@ impl Component for ServerList {
                                                 }),
                                         ),
                                 ),
-                            )
+                            ),
                     )
                     .show_scrollbar(false)
                     .width(Size::px(56.))
                     .height(Size::func(|size| Some(size.parent - 56.))),
             )
             .child(
-                StoatTooltip::new(label().max_lines(1).font_size(11.).text("Settings")).position(AttachedPosition::Right).child(
-                    rect()
-                        .width(Size::px(56.))
-                        .height(Size::px(56.))
-                        .center()
-                        .child(
-                            StoatButton::new()
-                                .corner_radius(42.)
-                                .child(
-                                    rect()
-                                        .center()
-                                        .width(Size::px(42.0))
-                                        .height(Size::px(42.0))
-                                        .overflow(Overflow::Clip)
-                                        .background(theme.md.surface_container_low.as_argb_u32())
-                                        .child(
-                                            svg(settings())
-                                                .width(Size::px(32.0))
-                                                .height(Size::px(32.0)),
-                                        ),
-                                )
-                                .on_press(move |_| {
-
-                                    radio.write_channel(AppChannel::SettingsPage).settings_page =
-                                        Some(SettingsPage::default());
-                                }),
-                        ),
-                ),
+                StoatTooltip::new(label().max_lines(1).font_size(11.).text("Settings"))
+                    .position(AttachedPosition::Right)
+                    .child(
+                        rect()
+                            .width(Size::px(56.))
+                            .height(Size::px(56.))
+                            .center()
+                            .child(
+                                StoatButton::new()
+                                    .corner_radius(42.)
+                                    .child(
+                                        rect()
+                                            .center()
+                                            .width(Size::px(42.0))
+                                            .height(Size::px(42.0))
+                                            .overflow(Overflow::Clip)
+                                            .background(
+                                                theme.md.surface_container_low.as_argb_u32(),
+                                            )
+                                            .child(
+                                                svg(settings())
+                                                    .width(Size::px(32.0))
+                                                    .height(Size::px(32.0)),
+                                            ),
+                                    )
+                                    .on_press(move |_| {
+                                        radio
+                                            .write_channel(AppChannel::SettingsPage)
+                                            .settings_page = Some(SettingsPage::default());
+                                    }),
+                            ),
+                    ),
             )
     }
 }

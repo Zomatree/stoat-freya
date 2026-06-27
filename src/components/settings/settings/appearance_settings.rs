@@ -7,9 +7,7 @@ use freya::{
     prelude::*,
 };
 
-use crate::{
-    ThemeScheme, components::StoatSegmentedButton, use_config, use_material_theme
-};
+use crate::{ThemeScheme, components::StoatSegmentedButton, use_config, use_material_theme};
 
 #[derive(PartialEq)]
 pub struct AppearanceSettings {}
@@ -19,7 +17,10 @@ impl Component for AppearanceSettings {
         let mut config = use_config();
 
         let scheme = use_state(|| config.read().theme.scheme);
-        let mut source = use_state(|| {println!("new source"); Color::new(config.read().theme.theme_source | (0xFF << 24))});
+        let mut source = use_state(|| {
+            println!("new source");
+            Color::new(config.read().theme.theme_source | (0xFF << 24))
+        });
 
         use_side_effect(move || {
             let scheme = *scheme.read();
@@ -35,7 +36,7 @@ impl Component for AppearanceSettings {
         });
 
         rect()
-        .spacing(8.)
+            .spacing(8.)
             .child(
                 StoatSegmentedButton::new(
                     scheme,
@@ -63,8 +64,8 @@ impl Component for AppearanceSettings {
                         },
                     ))
                     .child(
-                        rect()
-                            .child(StoatSegmentedButton::new(
+                        rect().child(
+                            StoatSegmentedButton::new(
                                 source,
                                 vec![
                                     Color::new(0xffff5733),
@@ -76,7 +77,9 @@ impl Component for AppearanceSettings {
                                     Color::new(0xff8c5fd3),
                                 ],
                                 |color| rect().expanded().background(color.clone()).into_element(),
-                            ).height(56.)),
+                            )
+                            .height(56.),
+                        ),
                     ),
             )
     }

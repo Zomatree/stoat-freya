@@ -4,7 +4,9 @@ use freya::prelude::*;
 
 use crate::{
     components::{
-        ChannelDescriptionModal, CreateJoinServerModal, CreateRoleModal, CreateServerModal, DeleteMessageModal, JoinServerModal, ServerInfoModal, StoatButton, StoatButtonLayoutThemePartialExt
+        ChannelDescriptionModal, CreateJoinServerModal, CreateRoleModal, CreateServerModal,
+        DeleteMessageModal, JoinServerModal, ServerInfoModal, StoatButton,
+        StoatButtonLayoutThemePartialExt,
     },
     use_material_theme,
 };
@@ -124,7 +126,9 @@ impl Component for Modal {
                                     ModalValue::CreateRole { server } => {
                                         CreateRoleModal { server }.into_element()
                                     }
-                                    ModalValue::DeleteMessage { channel, message } => DeleteMessageModal { channel, message }.into_element()
+                                    ModalValue::DeleteMessage { channel, message } => {
+                                        DeleteMessageModal { channel, message }.into_element()
+                                    }
                                 }),
                         ),
                 ),

@@ -1,4 +1,10 @@
-use std::{cell::Ref, ops::Deref, rc::Rc, sync::{Arc, LazyLock}, time::SystemTime};
+use std::{
+    cell::Ref,
+    ops::Deref,
+    rc::Rc,
+    sync::{Arc, LazyLock},
+    time::SystemTime,
+};
 
 use freya::{prelude::*, radio::Readable};
 use indexmap::IndexMap;
@@ -133,7 +139,10 @@ pub fn member_display_color(member: &v0::Member, server: &v0::Server) -> Option<
     parse_fill(color)
 }
 
-pub fn is_channel_muted(channel_id: &str, settings: Readable<Option<NotificationsSettings>>) -> bool {
+pub fn is_channel_muted(
+    channel_id: &str,
+    settings: Readable<Option<NotificationsSettings>>,
+) -> bool {
     let mute = settings
         .read()
         .as_ref()
@@ -167,7 +176,10 @@ pub fn is_server_muted(server_id: &str, settings: Readable<Option<NotificationsS
     })
 }
 
-pub fn get_unread_badge(channel: &v0::Channel, unread: &ChannelUnread) -> Option<NotificationBadge> {
+pub fn get_unread_badge(
+    channel: &v0::Channel,
+    unread: &ChannelUnread,
+) -> Option<NotificationBadge> {
     if !unread.mentions.is_empty() {
         Some(NotificationBadge::Mentions(unread.mentions.len()))
     } else {
@@ -227,7 +239,10 @@ impl<T: Clone + 'static> Initial<T> {
         self.current.set(self.initial.read().clone());
     }
 
-    pub fn get_if_different(&self) -> Option<T> where T: PartialEq {
+    pub fn get_if_different(&self) -> Option<T>
+    where
+        T: PartialEq,
+    {
         let initial = &*self.initial.read();
         let current = &*self.current.read();
 

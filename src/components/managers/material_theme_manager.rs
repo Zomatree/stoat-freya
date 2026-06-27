@@ -1,8 +1,13 @@
-use std::{mem, sync::{Arc, LazyLock, RwLock}, time::Duration};
+use std::{
+    mem,
+    sync::{Arc, LazyLock, RwLock},
+    time::Duration,
+};
 
 use freya::{
     animation::{
-        AnimDirection, AnimNum, AnimatedValue, Ease, OnChange, OnCreation, ReadAnimatedValue, use_animation
+        AnimDirection, AnimNum, AnimatedValue, Ease, OnChange, OnCreation, ReadAnimatedValue,
+        use_animation,
     },
     prelude::*,
     radio::IntoReadable,
@@ -30,7 +35,8 @@ fn generate(theme_config: &ThemeConfig) -> Theme {
     }
 }
 
-static INITIAL_THEME: LazyLock<Arc<RwLock<Option<Theme>>>> = LazyLock::new(|| Arc::new(RwLock::new(None)));
+static INITIAL_THEME: LazyLock<Arc<RwLock<Option<Theme>>>> =
+    LazyLock::new(|| Arc::new(RwLock::new(None)));
 
 #[derive(PartialEq)]
 pub struct MaterialThemeProvider {
@@ -133,7 +139,9 @@ impl AnimTheme {
         Self {
             origin,
             destination,
-            inner: AnimNum::new(0., 1.).duration(Duration::from_millis(250)).ease(Ease::InOut),
+            inner: AnimNum::new(0., 1.)
+                .duration(Duration::from_millis(250))
+                .ease(Ease::InOut),
             value: origin,
         }
     }
@@ -167,54 +175,126 @@ impl AnimatedValue for AnimTheme {
         let percentage = self.inner.value();
 
         let mix = |a: u8, b: u8| (a as f32 + (b as f32 - a as f32) * percentage).round() as u8;
-        let lerp = |a: Rgb, b: Rgb| Rgb::new(mix(a.red, b.red), mix(a.green, b.green), mix(a.blue, b.blue));
+        let lerp = |a: Rgb, b: Rgb| {
+            Rgb::new(
+                mix(a.red, b.red),
+                mix(a.green, b.green),
+                mix(a.blue, b.blue),
+            )
+        };
 
         self.value = Theme {
             md: Scheme {
                 primary: lerp(origin.md.primary, destination.md.primary),
                 on_primary: lerp(origin.md.on_primary, destination.md.on_primary),
-                primary_container: lerp(origin.md.primary_container, destination.md.primary_container),
-                on_primary_container: lerp(origin.md.on_primary_container, destination.md.on_primary_container),
+                primary_container: lerp(
+                    origin.md.primary_container,
+                    destination.md.primary_container,
+                ),
+                on_primary_container: lerp(
+                    origin.md.on_primary_container,
+                    destination.md.on_primary_container,
+                ),
                 inverse_primary: lerp(origin.md.inverse_primary, destination.md.inverse_primary),
                 primary_fixed: lerp(origin.md.primary_fixed, destination.md.primary_fixed),
-                primary_fixed_dim: lerp(origin.md.primary_fixed_dim, destination.md.primary_fixed_dim),
+                primary_fixed_dim: lerp(
+                    origin.md.primary_fixed_dim,
+                    destination.md.primary_fixed_dim,
+                ),
                 on_primary_fixed: lerp(origin.md.on_primary_fixed, destination.md.on_primary_fixed),
-                on_primary_fixed_variant: lerp(origin.md.on_primary_fixed_variant, destination.md.on_primary_fixed_variant),
+                on_primary_fixed_variant: lerp(
+                    origin.md.on_primary_fixed_variant,
+                    destination.md.on_primary_fixed_variant,
+                ),
                 secondary: lerp(origin.md.secondary, destination.md.secondary),
                 on_secondary: lerp(origin.md.on_secondary, destination.md.on_secondary),
-                secondary_container: lerp(origin.md.secondary_container, destination.md.secondary_container),
-                on_secondary_container: lerp(origin.md.on_secondary_container, destination.md.on_secondary_container),
+                secondary_container: lerp(
+                    origin.md.secondary_container,
+                    destination.md.secondary_container,
+                ),
+                on_secondary_container: lerp(
+                    origin.md.on_secondary_container,
+                    destination.md.on_secondary_container,
+                ),
                 secondary_fixed: lerp(origin.md.secondary_fixed, destination.md.secondary_fixed),
-                secondary_fixed_dim: lerp(origin.md.secondary_fixed_dim, destination.md.secondary_fixed_dim),
-                on_secondary_fixed: lerp(origin.md.on_secondary_fixed, destination.md.on_secondary_fixed),
-                on_secondary_fixed_variant: lerp(origin.md.on_secondary_fixed_variant, destination.md.on_secondary_fixed_variant),
+                secondary_fixed_dim: lerp(
+                    origin.md.secondary_fixed_dim,
+                    destination.md.secondary_fixed_dim,
+                ),
+                on_secondary_fixed: lerp(
+                    origin.md.on_secondary_fixed,
+                    destination.md.on_secondary_fixed,
+                ),
+                on_secondary_fixed_variant: lerp(
+                    origin.md.on_secondary_fixed_variant,
+                    destination.md.on_secondary_fixed_variant,
+                ),
                 tertiary: lerp(origin.md.tertiary, destination.md.tertiary),
                 on_tertiary: lerp(origin.md.on_tertiary, destination.md.on_tertiary),
-                tertiary_container: lerp(origin.md.tertiary_container, destination.md.tertiary_container),
-                on_tertiary_container: lerp(origin.md.on_tertiary_container, destination.md.on_tertiary_container),
+                tertiary_container: lerp(
+                    origin.md.tertiary_container,
+                    destination.md.tertiary_container,
+                ),
+                on_tertiary_container: lerp(
+                    origin.md.on_tertiary_container,
+                    destination.md.on_tertiary_container,
+                ),
                 tertiary_fixed: lerp(origin.md.tertiary_fixed, destination.md.tertiary_fixed),
-                tertiary_fixed_dim: lerp(origin.md.tertiary_fixed_dim, destination.md.tertiary_fixed_dim),
-                on_tertiary_fixed: lerp(origin.md.on_tertiary_fixed, destination.md.on_tertiary_fixed),
-                on_tertiary_fixed_variant: lerp(origin.md.on_tertiary_fixed_variant, destination.md.on_tertiary_fixed_variant),
+                tertiary_fixed_dim: lerp(
+                    origin.md.tertiary_fixed_dim,
+                    destination.md.tertiary_fixed_dim,
+                ),
+                on_tertiary_fixed: lerp(
+                    origin.md.on_tertiary_fixed,
+                    destination.md.on_tertiary_fixed,
+                ),
+                on_tertiary_fixed_variant: lerp(
+                    origin.md.on_tertiary_fixed_variant,
+                    destination.md.on_tertiary_fixed_variant,
+                ),
                 error: lerp(origin.md.error, destination.md.error),
                 on_error: lerp(origin.md.on_error, destination.md.on_error),
                 error_container: lerp(origin.md.error_container, destination.md.error_container),
-                on_error_container: lerp(origin.md.on_error_container, destination.md.on_error_container),
+                on_error_container: lerp(
+                    origin.md.on_error_container,
+                    destination.md.on_error_container,
+                ),
                 surface_dim: lerp(origin.md.surface_dim, destination.md.surface_dim),
                 surface: lerp(origin.md.surface, destination.md.surface),
                 surface_tint: lerp(origin.md.surface_tint, destination.md.surface_tint),
                 surface_bright: lerp(origin.md.surface_bright, destination.md.surface_bright),
-                surface_container_lowest: lerp(origin.md.surface_container_lowest, destination.md.surface_container_lowest),
-                surface_container_low: lerp(origin.md.surface_container_low, destination.md.surface_container_low),
-                surface_container: lerp(origin.md.surface_container, destination.md.surface_container),
-                surface_container_high: lerp(origin.md.surface_container_high, destination.md.surface_container_high),
-                surface_container_highest: lerp(origin.md.surface_container_highest, destination.md.surface_container_highest),
+                surface_container_lowest: lerp(
+                    origin.md.surface_container_lowest,
+                    destination.md.surface_container_lowest,
+                ),
+                surface_container_low: lerp(
+                    origin.md.surface_container_low,
+                    destination.md.surface_container_low,
+                ),
+                surface_container: lerp(
+                    origin.md.surface_container,
+                    destination.md.surface_container,
+                ),
+                surface_container_high: lerp(
+                    origin.md.surface_container_high,
+                    destination.md.surface_container_high,
+                ),
+                surface_container_highest: lerp(
+                    origin.md.surface_container_highest,
+                    destination.md.surface_container_highest,
+                ),
                 on_surface: lerp(origin.md.on_surface, destination.md.on_surface),
-                on_surface_variant: lerp(origin.md.on_surface_variant, destination.md.on_surface_variant),
+                on_surface_variant: lerp(
+                    origin.md.on_surface_variant,
+                    destination.md.on_surface_variant,
+                ),
                 outline: lerp(origin.md.outline, destination.md.outline),
                 outline_variant: lerp(origin.md.outline_variant, destination.md.outline_variant),
                 inverse_surface: lerp(origin.md.inverse_surface, destination.md.inverse_surface),
-                inverse_on_surface: lerp(origin.md.inverse_on_surface, destination.md.inverse_on_surface),
+                inverse_on_surface: lerp(
+                    origin.md.inverse_on_surface,
+                    destination.md.inverse_on_surface,
+                ),
                 surface_variant: lerp(origin.md.surface_variant, destination.md.surface_variant),
                 background: lerp(origin.md.background, destination.md.background),
                 on_background: lerp(origin.md.on_background, destination.md.on_background),
@@ -222,11 +302,31 @@ impl AnimatedValue for AnimTheme {
                 scrim: lerp(origin.md.scrim, destination.md.scrim),
             },
             stoat: StoatScheme {
-                presence_online: Color::lerp(origin.stoat.presence_online, destination.stoat.presence_online, percentage),
-                presence_idle: Color::lerp(origin.stoat.presence_idle, destination.stoat.presence_idle, percentage),
-                presence_busy: Color::lerp(origin.stoat.presence_busy, destination.stoat.presence_busy, percentage),
-                presence_focus: Color::lerp(origin.stoat.presence_focus, destination.stoat.presence_focus, percentage),
-                presence_invisible: Color::lerp(origin.stoat.presence_invisible, destination.stoat.presence_invisible, percentage),
+                presence_online: Color::lerp(
+                    origin.stoat.presence_online,
+                    destination.stoat.presence_online,
+                    percentage,
+                ),
+                presence_idle: Color::lerp(
+                    origin.stoat.presence_idle,
+                    destination.stoat.presence_idle,
+                    percentage,
+                ),
+                presence_busy: Color::lerp(
+                    origin.stoat.presence_busy,
+                    destination.stoat.presence_busy,
+                    percentage,
+                ),
+                presence_focus: Color::lerp(
+                    origin.stoat.presence_focus,
+                    destination.stoat.presence_focus,
+                    percentage,
+                ),
+                presence_invisible: Color::lerp(
+                    origin.stoat.presence_invisible,
+                    destination.stoat.presence_invisible,
+                    percentage,
+                ),
             },
         }
     }

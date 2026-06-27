@@ -1,4 +1,11 @@
-use freya::{icons::lucide::{arrow_left, arrow_right, circle_x, image, info, key, pin, pin_off, plus, shield_x, tag, text_align_start, volume_2, x}, prelude::*, radio::use_radio};
+use freya::{
+    icons::lucide::{
+        arrow_left, arrow_right, circle_x, image, info, key, pin, pin_off, plus, shield_x, tag,
+        text_align_start, volume_2, x,
+    },
+    prelude::*,
+    radio::use_radio,
+};
 use jiff::{Timestamp, tz::TimeZone};
 use stoat_models::v0;
 
@@ -84,104 +91,135 @@ impl Component for Message {
         };
 
         if let Some(system) = &self.message.message.system {
-            rect().horizontal().spacing(8.).font_size(14.).child(
-                rect()
-                    .width(Size::px(70.))
-                    .height(Size::px(20.))
-                    .center()
-                    .color(theme.md.primary.as_argb_u32())
-                    .child(
-                        svg(match system {
-                            v0::SystemMessage::Text { .. } => info(),
-                            v0::SystemMessage::UserAdded { .. } => plus(),
-                            v0::SystemMessage::UserRemove { .. } => x(),
-                            v0::SystemMessage::UserJoined { .. } => arrow_right(),
-                            v0::SystemMessage::UserLeft { .. } => arrow_left(),
-                            v0::SystemMessage::UserKicked { .. } => circle_x(),
-                            v0::SystemMessage::UserBanned { .. } => shield_x(),
-                            v0::SystemMessage::ChannelRenamed { .. } => tag(),
-                            v0::SystemMessage::ChannelDescriptionChanged { .. } => text_align_start(),
-                            v0::SystemMessage::ChannelIconChanged { .. } => image(),
-                            v0::SystemMessage::ChannelOwnershipChanged { .. } => key(),
-                            v0::SystemMessage::MessagePinned { .. } => pin(),
-                            v0::SystemMessage::MessageUnpinned { .. } => pin_off(),
-                            v0::SystemMessage::CallStarted { .. } => volume_2(),
-                        })
-                        .width(Size::px(16.))
-                        .height(Size::px(16.)),
-                    ),
-            )
-            .child(match system {
-                v0::SystemMessage::Text { content } => rect().child(label().text(content.clone())),
-                v0::SystemMessage::UserAdded { id, by } => {
-                    let user = users.read().get(id).unwrap().clone();
-                    let by = users.read().get(by).unwrap().clone();
+            rect()
+                .horizontal()
+                .spacing(8.)
+                .font_size(14.)
+                .child(
+                    rect()
+                        .width(Size::px(70.))
+                        .height(Size::px(20.))
+                        .center()
+                        .color(theme.md.primary.as_argb_u32())
+                        .child(
+                            svg(match system {
+                                v0::SystemMessage::Text { .. } => info(),
+                                v0::SystemMessage::UserAdded { .. } => plus(),
+                                v0::SystemMessage::UserRemove { .. } => x(),
+                                v0::SystemMessage::UserJoined { .. } => arrow_right(),
+                                v0::SystemMessage::UserLeft { .. } => arrow_left(),
+                                v0::SystemMessage::UserKicked { .. } => circle_x(),
+                                v0::SystemMessage::UserBanned { .. } => shield_x(),
+                                v0::SystemMessage::ChannelRenamed { .. } => tag(),
+                                v0::SystemMessage::ChannelDescriptionChanged { .. } => {
+                                    text_align_start()
+                                }
+                                v0::SystemMessage::ChannelIconChanged { .. } => image(),
+                                v0::SystemMessage::ChannelOwnershipChanged { .. } => key(),
+                                v0::SystemMessage::MessagePinned { .. } => pin(),
+                                v0::SystemMessage::MessageUnpinned { .. } => pin_off(),
+                                v0::SystemMessage::CallStarted { .. } => volume_2(),
+                            })
+                            .width(Size::px(16.))
+                            .height(Size::px(16.)),
+                        ),
+                )
+                .child(match system {
+                    v0::SystemMessage::Text { content } => {
+                        rect().child(label().text(content.clone()))
+                    }
+                    v0::SystemMessage::UserAdded { id, by } => {
+                        let user = users.read().get(id).unwrap().clone();
+                        let by = users.read().get(by).unwrap().clone();
 
-                    rect().child(label().text(format!("{} has been added by {}", user.username, by.username)))
-                },
-                v0::SystemMessage::UserRemove { id, by } => {
-                    let user = users.read().get(id).unwrap().clone();
-                    let by = users.read().get(by).unwrap().clone();
+                        rect().child(label().text(format!(
+                            "{} has been added by {}",
+                            user.username, by.username
+                        )))
+                    }
+                    v0::SystemMessage::UserRemove { id, by } => {
+                        let user = users.read().get(id).unwrap().clone();
+                        let by = users.read().get(by).unwrap().clone();
 
-                    rect().child(label().text(format!("{} has been removed by {}", user.username, by.username)))
-                },
-                v0::SystemMessage::UserJoined { id } => {
-                    let user = users.read().get(id).unwrap().clone();
+                        rect().child(label().text(format!(
+                            "{} has been removed by {}",
+                            user.username, by.username
+                        )))
+                    }
+                    v0::SystemMessage::UserJoined { id } => {
+                        let user = users.read().get(id).unwrap().clone();
 
-                    rect().child(label().text(format!("{} joined the server", user.username)))
-                },
-                v0::SystemMessage::UserLeft { id } => {
-                    let user = users.read().get(id).unwrap().clone();
+                        rect().child(label().text(format!("{} joined the server", user.username)))
+                    }
+                    v0::SystemMessage::UserLeft { id } => {
+                        let user = users.read().get(id).unwrap().clone();
 
-                    rect().child(label().text(format!("{} left the server", user.username)))
-                },
-                v0::SystemMessage::UserKicked { id } => {
-                    let user = users.read().get(id).unwrap().clone();
+                        rect().child(label().text(format!("{} left the server", user.username)))
+                    }
+                    v0::SystemMessage::UserKicked { id } => {
+                        let user = users.read().get(id).unwrap().clone();
 
-                    rect().child(label().text(format!("{} has been kicked from the server", user.username)))
-                },
-                v0::SystemMessage::UserBanned { id } => {
-                    let user = users.read().get(id).unwrap().clone();
+                        rect().child(
+                            label()
+                                .text(format!("{} has been kicked from the server", user.username)),
+                        )
+                    }
+                    v0::SystemMessage::UserBanned { id } => {
+                        let user = users.read().get(id).unwrap().clone();
 
-                    rect().child(label().text(format!("{} has been banned from the server", user.username)))
-                },
-                v0::SystemMessage::ChannelRenamed { name, by } => {
-                    let user = users.read().get(by).unwrap().clone();
+                        rect().child(
+                            label()
+                                .text(format!("{} has been banned from the server", user.username)),
+                        )
+                    }
+                    v0::SystemMessage::ChannelRenamed { name, by } => {
+                        let user = users.read().get(by).unwrap().clone();
 
-                    rect().child(label().text(format!("{} updated the group name to {}", user.username, name)))
-                },
-                v0::SystemMessage::ChannelDescriptionChanged { by } => {
-                    let user = users.read().get(by).unwrap().clone();
+                        rect().child(label().text(format!(
+                            "{} updated the group name to {}",
+                            user.username, name
+                        )))
+                    }
+                    v0::SystemMessage::ChannelDescriptionChanged { by } => {
+                        let user = users.read().get(by).unwrap().clone();
 
-                    rect().child(label().text(format!("{} updated the group description", user.username)))
-                },
-                v0::SystemMessage::ChannelIconChanged { by } => {
-                    let user = users.read().get(by).unwrap().clone();
+                        rect().child(
+                            label()
+                                .text(format!("{} updated the group description", user.username)),
+                        )
+                    }
+                    v0::SystemMessage::ChannelIconChanged { by } => {
+                        let user = users.read().get(by).unwrap().clone();
 
-                    rect().child(label().text(format!("{} updated the group icon", user.username)))
-                },
-                v0::SystemMessage::ChannelOwnershipChanged { from, to } => {
-                    let from = users.read().get(from).unwrap().clone();
-                    let to = users.read().get(to).unwrap().clone();
+                        rect().child(
+                            label().text(format!("{} updated the group icon", user.username)),
+                        )
+                    }
+                    v0::SystemMessage::ChannelOwnershipChanged { from, to } => {
+                        let from = users.read().get(from).unwrap().clone();
+                        let to = users.read().get(to).unwrap().clone();
 
-                    rect().child(label().text(format!("{} transferred group ownership to {}", from.username, to.username)))
-                },
-                v0::SystemMessage::MessagePinned { id, by } => {
-                    let user = users.read().get(by).unwrap().clone();
+                        rect().child(label().text(format!(
+                            "{} transferred group ownership to {}",
+                            from.username, to.username
+                        )))
+                    }
+                    v0::SystemMessage::MessagePinned { id, by } => {
+                        let user = users.read().get(by).unwrap().clone();
 
-                    rect().child(label().text(format!("{} pinned", user.username)))
-                },
-                v0::SystemMessage::MessageUnpinned { id, by } => {
-                    let user = users.read().get(by).unwrap().clone();
+                        rect().child(label().text(format!("{} pinned", user.username)))
+                    }
+                    v0::SystemMessage::MessageUnpinned { id, by } => {
+                        let user = users.read().get(by).unwrap().clone();
 
-                    rect().child(label().text(format!("{} unpinned", user.username)))
-                },
-                v0::SystemMessage::CallStarted { by, finished_at } => {
-                    let user = users.read().get(by).unwrap().clone();
+                        rect().child(label().text(format!("{} unpinned", user.username)))
+                    }
+                    v0::SystemMessage::CallStarted { by, finished_at } => {
+                        let user = users.read().get(by).unwrap().clone();
 
-                    rect().child(label().text(format!("{} started a call", user.username)))
-                },
-            })
+                        rect().child(label().text(format!("{} started a call", user.username)))
+                    }
+                })
         } else {
             rect()
                 .child(

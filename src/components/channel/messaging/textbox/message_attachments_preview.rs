@@ -55,7 +55,7 @@ impl Component for MessageAttachmentsPreview {
                                     .child(svg(plus()).width(Size::px(48.)).height(Size::px(48.))),
                             ),
                     )
-                    .child(rect())
+                    .child(rect()),
             )
     }
 }
@@ -153,23 +153,29 @@ impl Component for MessageAttachmentPreview {
                                                                     .as_argb_u32(),
                                                             )
                                                             .padding(4.)
-
                                                             .child(
-                                                                svg(if self.attachment.spoiler { eye_off() } else { eye() })
-                                                                    .width(Size::px(24.))
-                                                                    .height(Size::px(24.))
-                                                                    .color(
-                                                                        theme
-                                                                            .md
-                                                                            .on_secondary_container
-                                                                            .as_argb_u32(),
-                                                                    ),
+                                                                svg(if self.attachment.spoiler {
+                                                                    eye_off()
+                                                                } else {
+                                                                    eye()
+                                                                })
+                                                                .width(Size::px(24.))
+                                                                .height(Size::px(24.))
+                                                                .color(
+                                                                    theme
+                                                                        .md
+                                                                        .on_secondary_container
+                                                                        .as_argb_u32(),
+                                                                ),
                                                             ),
                                                     )
-                                                    .on_press({let attachment = self.attachment.clone(); move |e: Event<PressEventData>| {
-                                                        e.stop_propagation();
-                                                        attachment.toggle_spoiler();
-                                                    }})
+                                                    .on_press({
+                                                        let attachment = self.attachment.clone();
+                                                        move |e: Event<PressEventData>| {
+                                                            e.stop_propagation();
+                                                            attachment.toggle_spoiler();
+                                                        }
+                                                    }),
                                             ),
                                     )
                             })),

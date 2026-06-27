@@ -1,3 +1,4 @@
+pub mod message;
 pub mod message_actions;
 pub mod message_attachment;
 pub mod message_content;
@@ -6,9 +7,9 @@ pub mod message_embed;
 pub mod message_group;
 pub mod message_reactions;
 pub mod message_reply;
-pub mod message;
 pub mod trailing_message;
 
+pub use message::*;
 pub use message_actions::*;
 pub use message_attachment::*;
 pub use message_content::*;
@@ -17,5 +18,4 @@ pub use message_embed::*;
 pub use message_group::*;
 pub use message_reactions::*;
 pub use message_reply::*;
-pub use message::*;
 pub use trailing_message::*;

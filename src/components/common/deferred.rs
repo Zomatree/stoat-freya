@@ -8,7 +8,7 @@ pub struct Deferred {
 impl Deferred {
     pub fn new() -> Self {
         Self {
-            child: rect().into_element()
+            child: rect().into_element(),
         }
     }
 

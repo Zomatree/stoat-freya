@@ -128,12 +128,12 @@ impl<T: Hash + Clone + PartialEq + 'static> Component for StoatInnerSegmentedBut
             .height(Size::px(self.height))
             .child(
                 StoatButton::new()
-                .width(Size::Fill)
-                .height(Size::px(self.height))
+                    .width(Size::Fill)
+                    .height(Size::px(self.height))
                     .corner_radius(corners)
                     .child(
                         rect()
-                        .width(Size::Fill)
+                            .width(Size::Fill)
                             .height(Size::px(self.height))
                             .color(color.as_argb_u32())
                             .background(background.as_argb_u32())

@@ -7,7 +7,7 @@ use crate::{AppChannel, components::Dialog};
 
 #[derive(PartialEq)]
 pub struct ChannelDescriptionModal {
-    pub channel: String
+    pub channel: String,
 }
 
 impl Component for ChannelDescriptionModal {

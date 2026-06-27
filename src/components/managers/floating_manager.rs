@@ -54,12 +54,15 @@ impl Component for Floating {
                 Platform::get().with_window(None, move |window| {
                     let window_size = window.inner_size();
 
-                    let x =
-                        if (mouse_pos.x as u32 + area.size.width as u32) > (window_size.width - 240) {
-                            (mouse_pos.x as f32 - area.size.width).min(window_size.width as f32 - area.size.width - 240.) - 24.
-                        } else {
-                            mouse_pos.x as f32 + 24.
-                        };
+                    let x = if (mouse_pos.x as u32 + area.size.width as u32)
+                        > (window_size.width - 240)
+                    {
+                        (mouse_pos.x as f32 - area.size.width)
+                            .min(window_size.width as f32 - area.size.width - 240.)
+                            - 24.
+                    } else {
+                        mouse_pos.x as f32 + 24.
+                    };
 
                     let y = if (mouse_pos.y as u32 + area.size.height as u32)
                         > window_size.height - 32
@@ -67,7 +70,9 @@ impl Component for Floating {
                         mouse_pos.y as f32 - area.size.height + 16.
                     } else {
                         mouse_pos.y as f32 - 16.
-                    }.max(16.).min(window_size.height as f32 - area.size.height - 65.);
+                    }
+                    .max(16.)
+                    .min(window_size.height as f32 - area.size.height - 65.);
 
                     pos.set((x, y));
                 });

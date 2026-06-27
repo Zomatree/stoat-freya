@@ -11,7 +11,9 @@ use tokio::{
 };
 
 use crate::{
-    AppChannel, AppState, ConnectionState, components, http, state, update_settings, use_config, use_material_theme, websocket::{self, Event, LocalEvent}
+    AppChannel, AppState, ConnectionState, components, http, state, update_settings, use_config,
+    use_material_theme,
+    websocket::{self, Event, LocalEvent},
 };
 
 #[derive(PartialEq)]

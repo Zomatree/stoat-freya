@@ -1,6 +1,12 @@
 use std::borrow::Cow;
 
-use freya::{animation::{AnimColor, AnimNum, AnimatedValue, Ease, Function, OnChange, OnCreation, ReadAnimatedValue, use_animation_with_dependencies}, prelude::*};
+use freya::{
+    animation::{
+        AnimColor, AnimNum, AnimatedValue, Ease, Function, OnChange, OnCreation, ReadAnimatedValue,
+        use_animation_with_dependencies,
+    },
+    prelude::*,
+};
 
 use crate::use_material_theme;
 
@@ -20,7 +26,7 @@ impl SingleLineEntry {
             title: title.into(),
             placeholder: None,
             mode: InputMode::Shown,
-            layout: LayoutData::default()
+            layout: LayoutData::default(),
         }
     }
 
@@ -51,15 +57,18 @@ impl Component for SingleLineEntry {
         let focus = use_focus(a11y_id);
         let theme = use_material_theme();
 
-        let title_animation =
-            use_animation_with_dependencies(&(!self.value.read().is_empty() || focus.read().is_focused()), move |anim, focused| {
+        let title_animation = use_animation_with_dependencies(
+            &(!self.value.read().is_empty() || focus.read().is_focused()),
+            move |anim, focused| {
                 anim.on_creation(OnCreation::Finish);
                 anim.on_change(OnChange::Rerun);
 
-                let num = |a, b| AnimNum::new(a, b)
-                    .time(200)
-                    .ease(Ease::InOut)
-                    .function(Function::Cubic);
+                let num = |a, b| {
+                    AnimNum::new(a, b)
+                        .time(200)
+                        .ease(Ease::InOut)
+                        .function(Function::Cubic)
+                };
 
                 let title_scale = num(1., 0.75);
                 let top = num(16., 2.);
@@ -69,20 +78,29 @@ impl Component for SingleLineEntry {
                 } else {
                     (title_scale, top).into_reversed()
                 }
-            });
+            },
+        );
 
         let color_animation =
             use_animation_with_dependencies(&focus.read().is_focused(), move |anim, focused| {
                 anim.on_creation(OnCreation::Finish);
                 anim.on_change(OnChange::Rerun);
 
-                let color = |a, b| AnimColor::new(a, b)
-                    .time(200)
-                    .ease(Ease::InOut)
-                    .function(Function::Cubic);
+                let color = |a, b| {
+                    AnimColor::new(a, b)
+                        .time(200)
+                        .ease(Ease::InOut)
+                        .function(Function::Cubic)
+                };
 
-                let title_color = color(theme.md.on_surface_variant.as_argb_u32(), theme.md.primary.as_argb_u32());
-                let placeholder_color = color(theme.md.on_surface_variant.as_argb_u32() & 0xFFFFFF, theme.md.on_surface_variant.as_argb_u32());
+                let title_color = color(
+                    theme.md.on_surface_variant.as_argb_u32(),
+                    theme.md.primary.as_argb_u32(),
+                );
+                let placeholder_color = color(
+                    theme.md.on_surface_variant.as_argb_u32() & 0xFFFFFF,
+                    theme.md.on_surface_variant.as_argb_u32(),
+                );
 
                 if *focused {
                     (title_color, placeholder_color)
@@ -133,11 +151,9 @@ impl Component for SingleLineEntry {
                                     .text_align(TextAlign::Start)
                                     .max_lines(1)
                                     .color(title_color)
-                                    .font_size(16)
+                                    .font_size(16),
                             )
-                            .position(
-                                Position::new_absolute().top(title_top)
-                            )
+                            .position(Position::new_absolute().top(title_top))
                             .transform_origin(TransformOrigin::top_left())
                             .scale(title_scale)
                             .layer(1),

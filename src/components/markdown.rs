@@ -1,5 +1,5 @@
-use std::sync::LazyLock;
 use itertools::Itertools;
+use std::sync::LazyLock;
 
 use freya::prelude::*;
 use regex::Regex;
@@ -18,33 +18,39 @@ impl Component for Markdown {
         let mut last = None::<Part>;
 
         for part in parts {
-            if let Some(last) = &last && last != &Part::Newline {
+            if let Some(last) = &last
+                && last != &Part::Newline
+            {
                 elements.push(label().text(" ").into_element())
             };
 
             match part.clone() {
-                Part::Text(text) => {elements.push(label().max_lines(1).text(text).into_element())}
-                Part::Emoji(id) => {elements.push(label().max_lines(1).text("<EMOJI>").into_element())}
-                Part::ChannelMention(id) => {elements.push(label().max_lines(1).text("<CHANNEL>").into_element())}
-                Part::Newline => {elements.push(label().width(Size::Fill).into_element())}
+                Part::Text(text) => elements.push(label().max_lines(1).text(text).into_element()),
+                Part::Emoji(id) => {
+                    elements.push(label().max_lines(1).text("<EMOJI>").into_element())
+                }
+                Part::ChannelMention(id) => {
+                    elements.push(label().max_lines(1).text("<CHANNEL>").into_element())
+                }
+                Part::Newline => elements.push(label().width(Size::Fill).into_element()),
             }
 
             last = Some(part);
-        };
+        }
 
         rect()
-        .background(Color::GRAY)
+            .background(Color::GRAY)
             .horizontal()
             .content(Content::Wrap {
                 wrap_spacing: Some(2.),
             })
             .children(elements)
-            // .children(parts.into_iter().map(|part| match part {
-            //     Part::Text(text) => label().max_lines(1).text(text).into_element(),
-            //     Part::Emoji(id) => label().max_lines(1).text("<EMOJI>").into_element(),
-            //     Part::ChannelMention(id) => label().max_lines(1).text("<CHANNEL>").into_element(),
-            //     Part::Newline => label().width(Size::Fill).into_element()
-            // }).intersperse(label().text(" ").into_element()))
+        // .children(parts.into_iter().map(|part| match part {
+        //     Part::Text(text) => label().max_lines(1).text(text).into_element(),
+        //     Part::Emoji(id) => label().max_lines(1).text("<EMOJI>").into_element(),
+        //     Part::ChannelMention(id) => label().max_lines(1).text("<CHANNEL>").into_element(),
+        //     Part::Newline => label().width(Size::Fill).into_element()
+        // }).intersperse(label().text(" ").into_element()))
     }
 }
 
@@ -53,7 +59,7 @@ enum Part {
     Text(String),
     Emoji(String),
     ChannelMention(String),
-    Newline
+    Newline,
 }
 
 static EMOJI: LazyLock<Regex> =
@@ -85,7 +91,7 @@ fn parse_markdown(content: String) -> Vec<Part> {
             } else {
                 out.push(Part::Text(word.to_string()));
             }
-        };
+        }
 
         if add_newline {
             out.push(Part::Newline);

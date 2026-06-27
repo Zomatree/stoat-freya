@@ -242,7 +242,12 @@ impl Component for Login {
                         rect()
                             .spacing(8.)
                             .padding(8.)
-                            .child(label().font_size(14.).color(theme.md.on_surface_variant.as_argb_u32()).text("Please confirm this action using the selected method."))
+                            .child(
+                                label()
+                                    .font_size(14.)
+                                    .color(theme.md.on_surface_variant.as_argb_u32())
+                                    .text("Please confirm this action using the selected method."),
+                            )
                             // .child(login_entry(
                             //     mfa_value,
                             //     "Authenticator App",

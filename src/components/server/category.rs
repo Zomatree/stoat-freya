@@ -8,11 +8,7 @@ use freya::{
 };
 use stoat_models::v0;
 
-use crate::{
-    AppChannel,
-    components::ChannelButton,
-    use_config, use_material_theme,
-};
+use crate::{AppChannel, components::ChannelButton, use_config, use_material_theme};
 
 #[derive(PartialEq)]
 pub struct Category {
@@ -144,7 +140,14 @@ impl Component for CategoryHeader {
         });
 
         rect()
-            .color(if hovering() { theme.md.on_surface } else { theme.md.on_surface_variant }.as_argb_u32())
+            .color(
+                if hovering() {
+                    theme.md.on_surface
+                } else {
+                    theme.md.on_surface_variant
+                }
+                .as_argb_u32(),
+            )
             .width(Size::Fill)
             .on_pointer_over(move |_| {
                 hovering.set(true);

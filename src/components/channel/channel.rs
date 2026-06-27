@@ -14,8 +14,8 @@ use crate::{
     AppChannel,
     components::{
         ChannelMessages, HideSidebarHeader, MemberList, MessageAttachmentsPreview, MessageModel,
-        MessageReplyPreview, ModalValue, StoatButton,
-        StoatButtonLayoutThemePartialExt, StoatTooltip, Textbox, use_modals,
+        MessageReplyPreview, ModalValue, StoatButton, StoatButtonLayoutThemePartialExt,
+        StoatTooltip, Textbox, use_modals,
     },
     http_manager, map_readable, use_config, use_material_theme,
 };
@@ -301,10 +301,8 @@ impl Component for Channel {
                     //                         spawn({
                     //                             let id = channel.id().to_string();
                     //                             let current_room = current_room.clone();
-
                     //                             async move {
                     //                                 let http = http();
-
                     //                                 if let Ok(resp) = http
                     //                                     .join_call(
                     //                                         &id,
@@ -326,7 +324,6 @@ impl Component for Channel {
                     //                                     .await
                     //                                 {
                     //                                     let audio = PlatformAudio::new().unwrap();
-
                     //                                     println!(
                     //                                         "{:?}",
                     //                                         audio
@@ -339,7 +336,6 @@ impl Component for Channel {
                     //                                             .playout_devices()
                     //                                             .collect::<Vec<_>>()
                     //                                     );
-
                     //                                     audio
                     //                                         .set_playout_device(
                     //                                             &audio
@@ -349,7 +345,6 @@ impl Component for Channel {
                     //                                                 .id,
                     //                                         )
                     //                                         .unwrap();
-
                     //                                     audio
                     //                                         .set_recording_device(
                     //                                             &audio
@@ -359,7 +354,6 @@ impl Component for Channel {
                     //                                                 .id,
                     //                                         )
                     //                                         .unwrap();
-
                     //                                     let (room, _) = Room::connect(
                     //                                         &resp.url,
                     //                                         &resp.token,
@@ -449,7 +443,7 @@ impl Component for Channel {
                                     .inner_margin((10., 16.))
                                     .corner_radius(40.)
                                     .width(Size::Fill)
-                                    .background(theme.md.surface_container_high.as_argb_u32())
+                                    .background(theme.md.surface_container_high.as_argb_u32()),
                             )
                             .max_width(Size::px(240.)),
                     ),
@@ -483,11 +477,16 @@ impl Component for Channel {
                                     .corner_radius(28.)
                                     .background(theme.md.surface_container_lowest.as_argb_u32())
                                     .overflow(Overflow::Clip)
-                                    .child(rect().height(Size::flex(1.)).main_align(Alignment::End).child(ChannelMessages {
-                                        replies,
-                                        channel: self.channel.clone(),
-                                        server: self.server.clone(),
-                                    }))
+                                    .child(
+                                        rect()
+                                            .height(Size::flex(1.))
+                                            .main_align(Alignment::End)
+                                            .child(ChannelMessages {
+                                                replies,
+                                                channel: self.channel.clone(),
+                                                server: self.server.clone(),
+                                            }),
+                                    )
                                     .child(
                                         rect()
                                             .width(Size::Fill)

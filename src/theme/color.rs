@@ -196,7 +196,7 @@ fn linear_gradient_parser<'a>() -> impl Parser<'a, &'a str, LinearGradient> {
             angle
                 .or_not()
                 .then(stops)
-                .delimited_by(just('('), just(')'))
+                .delimited_by(just('('), just(')')),
         )
         .map(|(angle, stops)| {
             let mut gradient = LinearGradient::new().angle(angle.unwrap_or(0.));

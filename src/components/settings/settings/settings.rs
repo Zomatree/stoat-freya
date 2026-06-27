@@ -1,7 +1,5 @@
 use freya::{
-    icons::lucide::{
-        square_arrow_right, x,
-    },
+    icons::lucide::{square_arrow_right, x},
     prelude::*,
     radio::use_radio,
 };
@@ -9,7 +7,8 @@ use freya::{
 use crate::{
     AppChannel, SettingsPage,
     components::{
-        AccountSettings, AppearanceSettings, Avatar, ProfileSettings, SourceCodeSettings, StoatButton, StoatButtonColorsThemePartialExt, StoatButtonLayoutThemePartialExt
+        AccountSettings, AppearanceSettings, Avatar, ProfileSettings, SourceCodeSettings,
+        StoatButton, StoatButtonColorsThemePartialExt, StoatButtonLayoutThemePartialExt,
     },
     theme::Theme,
     use_config, use_material_theme,

@@ -83,8 +83,7 @@ impl Component for JoinServerModal {
 
                                     let user_id = user_id.read().clone();
 
-                                    let member =
-                                        http().fetch_member(&id, &user_id).await.unwrap();
+                                    let member = http().fetch_member(&id, &user_id).await.unwrap();
                                     insert_member(member, station);
 
                                     *selection.write() = Selection::Server(id.clone());

@@ -380,7 +380,7 @@ impl Component for MemberListMember {
             .width(Size::Fill)
             .child(
                 StoatButton::new()
-                .corner_radius(28.)
+                    .corner_radius(28.)
                     .on_press({
                         let user = self.user.clone();
                         let member = self.member.clone();
@@ -409,13 +409,18 @@ impl Component for MemberListMember {
                                 move |e| {
                                     ContextMenu::open_from_event(
                                         &e,
-                                        Menu::new().child(MenuButton::new().child(label().font_size(14.).text("Copy User ID")).on_press({
-                                            let user = user.clone();
+                                        Menu::new().child(
+                                            MenuButton::new()
+                                                .child(label().font_size(14.).text("Copy User ID"))
+                                                .on_press({
+                                                    let user = user.clone();
 
-                                            move |_| {
-                                                Clipboard::set(user.read().id.clone()).unwrap();
-                                            }
-                                        })),
+                                                    move |_| {
+                                                        Clipboard::set(user.read().id.clone())
+                                                            .unwrap();
+                                                    }
+                                                }),
+                                        ),
                                     );
                                 }
                             })

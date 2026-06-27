@@ -4,7 +4,8 @@ use stoat_models::v0;
 use crate::{
     AppChannel,
     components::{
-        ProfileBadges, ProfileBanner, ProfileBio, ProfileButtons, ProfileJoined, ProfileRoles, ProfileStatus, StoatButton, StoatButtonLayoutThemePartialExt, use_floating
+        ProfileBadges, ProfileBanner, ProfileBio, ProfileButtons, ProfileJoined, ProfileRoles,
+        ProfileStatus, StoatButton, StoatButtonLayoutThemePartialExt, use_floating,
     },
     http, use_material_theme,
 };
@@ -82,32 +83,39 @@ impl Component for UserCard {
                                     floating.set(None);
                                     let user_id = user.read().id.clone();
                                     open_profile.clone().set(Some(user_id));
-                                })
-                                // .on_pointer_enter(move |_| {
-                                //     Cursor::set(CursorIcon::Pointer);
-                                // })
-                                // .on_pointer_leave(move |_| {
-                                //     Cursor::set(CursorIcon::default());
-                                // }),
+                                }), // .on_pointer_enter(move |_| {
+                                    //     Cursor::set(CursorIcon::Pointer);
+                                    // })
+                                    // .on_pointer_leave(move |_| {
+                                    //     Cursor::set(CursorIcon::default());
+                                    // }),
                         )
                         .child(ProfileButtons {
                             user: self.user.clone(),
                         })
                         .maybe_child({
-                            (self.member.as_ref().is_some_and(|member| !member.read().roles.is_empty()) || self.user.read().badges != 0).then(|| {
-                                rect()
-                                    .horizontal()
-                                    .spacing(8.)
-                                    .content(Content::Flex)
-                                    .maybe_child(
-                                        self.member.clone().filter(|member| !member.read().roles.is_empty()).map(|member| ProfileRoles { member }),
-                                    )
-                                    .maybe_child({
-                                        let badges = self.user.read().badges;
+                            (self
+                                .member
+                                .as_ref()
+                                .is_some_and(|member| !member.read().roles.is_empty())
+                                || self.user.read().badges != 0)
+                                .then(|| {
+                                    rect()
+                                        .horizontal()
+                                        .spacing(8.)
+                                        .content(Content::Flex)
+                                        .maybe_child(
+                                            self.member
+                                                .clone()
+                                                .filter(|member| !member.read().roles.is_empty())
+                                                .map(|member| ProfileRoles { member }),
+                                        )
+                                        .maybe_child({
+                                            let badges = self.user.read().badges;
 
-                                        (badges != 0).then(|| ProfileBadges { badges })
-                                    })
-                            })
+                                            (badges != 0).then(|| ProfileBadges { badges })
+                                        })
+                                })
                         })
                         .child(
                             rect()

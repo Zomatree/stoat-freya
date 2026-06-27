@@ -15,7 +15,9 @@ impl Component for HomeButton {
         let theme = use_material_theme();
 
         StoatTooltip::new(
-                label().max_lines(1).text("You have 0 pending friend requests.")
+            label()
+                .max_lines(1)
+                .text("You have 0 pending friend requests.")
                 .font_size(11.),
         )
         .position(AttachedPosition::Right)

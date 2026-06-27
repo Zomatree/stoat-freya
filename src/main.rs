@@ -5,17 +5,17 @@ pub mod components;
 pub mod config;
 pub mod error;
 pub mod state;
-pub mod utils;
-pub mod theme;
 pub mod stoat;
+pub mod theme;
+pub mod utils;
 
 pub use components::*;
 pub use config::*;
 pub use error::*;
 pub use state::*;
-pub use utils::*;
-pub use theme::*;
 pub use stoat::*;
+pub use theme::*;
+pub use utils::*;
 
 pub const BASE: &str = "https://api.stoat.chat";
 
@@ -86,7 +86,7 @@ fn main() {
                     .with_title("Ermine - Stoat")
                     .with_app_id("live.zomatree.ermine")
                     .with_size(1280., 720.)
-                    .with_decorations(true)
+                    .with_decorations(true),
             )
             .with_plugin(WebViewPlugin::new()),
     );

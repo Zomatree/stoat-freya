@@ -76,7 +76,11 @@ impl Component for ChannelList {
                 )
                 .child(
                     rect().padding((4., 8.)).spacing(8.).children(
-                            self.server.read().categories.iter().flatten()
+                        self.server
+                            .read()
+                            .categories
+                            .iter()
+                            .flatten()
                             .filter(|cat| !cat.channels.is_empty() && cat.id != "default")
                             .map(|cat| {
                                 let server = self.server.clone();

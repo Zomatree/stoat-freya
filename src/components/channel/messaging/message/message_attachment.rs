@@ -5,7 +5,9 @@ use freya::{
 use stoat_models::v0;
 
 use crate::{
-    components::{StoatButton, StoatButtonColorsThemePartialExt, StoatButtonLayoutThemePartialExt, image},
+    components::{
+        StoatButton, StoatButtonColorsThemePartialExt, StoatButtonLayoutThemePartialExt, image,
+    },
     http, use_material_theme,
 };
 

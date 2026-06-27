@@ -9,7 +9,10 @@ use stoat_models::v0;
 
 use crate::{
     AppChannel, ChannelSettingsPage,
-    components::{OverviewChannelSettings, StoatButton, StoatButtonColorsThemePartialExt, StoatButtonLayoutThemePartialExt},
+    components::{
+        OverviewChannelSettings, StoatButton, StoatButtonColorsThemePartialExt,
+        StoatButtonLayoutThemePartialExt,
+    },
     theme::Theme,
     use_material_theme,
 };
@@ -81,11 +84,16 @@ impl Component for ChannelSettings {
                                     .spacing(15.)
                                     .child(settings_category(
                                         match &*self.channel.read() {
-                                            v0::Channel::TextChannel { name, .. } | v0::Channel::Group { name, .. } => name.clone(),
-                                            _ => unreachable!()
+                                            v0::Channel::TextChannel { name, .. }
+                                            | v0::Channel::Group { name, .. } => name.clone(),
+                                            _ => unreachable!(),
                                         },
                                         &theme,
-                                        &[ChannelSettingsPage::Overview, ChannelSettingsPage::Permissions, ChannelSettingsPage::Webhooks],
+                                        &[
+                                            ChannelSettingsPage::Overview,
+                                            ChannelSettingsPage::Permissions,
+                                            ChannelSettingsPage::Webhooks,
+                                        ],
                                     ))
                                     .child(DeleteChannelButton {}),
                             ),
@@ -118,7 +126,12 @@ impl Component for ChannelSettings {
                                                     .font_weight(550),
                                             )
                                             .child(match page {
-                                                ChannelSettingsPage::Overview => OverviewChannelSettings { channel: self.channel.clone() }.into_element(),
+                                                ChannelSettingsPage::Overview => {
+                                                    OverviewChannelSettings {
+                                                        channel: self.channel.clone(),
+                                                    }
+                                                    .into_element()
+                                                }
                                                 ChannelSettingsPage::Permissions => {
                                                     "Coming soon!".into_element()
                                                 }
